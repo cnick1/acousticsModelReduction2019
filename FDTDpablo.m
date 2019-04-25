@@ -10,13 +10,13 @@ dx=.25;
 dy=.25;
 [a m A]=matpab2(n, c, rho,dt,dx,dy);
 %%
-% Iniial condition setup
+% Initial condition setup
 
 xx=1:1:n;
 yy=1:1:n;
 x0=8;
 y0=32;
-%chosse C = height of parabol
+%choose C = height of parabola
 C=.05;
 
 k=15; % how many grid space for the radius of the parabol
