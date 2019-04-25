@@ -1,0 +1,17 @@
+% FDTD bench for model reduction
+
+
+rho=1000;, c=345;
+n=10;
+[a m iter]=matpab2(n, c, rho, 1/100,1/10,1/10);
+A=iter;
+
+in=[zeros(n^2,1);zeros(n^2,1);zeros(n^2,1)];
+
+in(220:240)=1;
+
+fdtd(:,1)=iter*in;
+
+for i=2:n
+    fdtd(:,i)=iter*fdtd(:,i-1);
+end
