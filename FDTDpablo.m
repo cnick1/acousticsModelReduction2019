@@ -30,7 +30,7 @@ for i=1:n
         end
     end
 end
-p0=mattovec(ff);
+p0=ff(:);
 mesh(xx,yy,ff)
 
 %%
@@ -41,7 +41,7 @@ lengthofsystem=n*dx
 
 %P0=zeros(n,n);
 %P0([15],[15])=.0001;
-%p=mattovec(P0);
+%p=P0(:);
 % load inp0
 % p=p0;
 %p=zeros(n^2,1);

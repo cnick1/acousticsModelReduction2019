@@ -31,4 +31,4 @@ a=sparse(a);
 m=sparse(m);
 %m([2*n^2+1:2*n^2+n],[1:n])=zeros(n,n);
 %m([2*n^2+n:2*n^2+n+5],[1:n])=0;
-iter=inv(m)*a;
+iter=m\a;
