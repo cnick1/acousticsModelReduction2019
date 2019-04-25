@@ -8,7 +8,7 @@ n=40;
 dt=.0001;
 dx=.25;
 dy=.25;
-[a m A]=matpab2(n, c, rho,dt,dx,dy);
+[a m A]=matpab2(n, c, rho,dt,dx,dy); %Build the updating matrix A (U) for leapfrog technique
 %%
 % Initial condition setup
 
