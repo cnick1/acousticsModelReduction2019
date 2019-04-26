@@ -1,0 +1,9 @@
+% Comparing svd of the FDTD
+
+load SVFDTD
+
+plot(sn4, 'bo')
+hold on
+plot(sn10, 'ro')
+plot(sn20, 'go')
+plot(sn40, 'ko')
