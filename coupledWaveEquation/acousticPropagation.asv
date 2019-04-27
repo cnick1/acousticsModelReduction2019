@@ -7,7 +7,7 @@
 % where $p$ represents pressure and $K = - \rho c^2$, where $\rho$ is the
 % uniform density and $c$ is the speed of sound in the medium.
  
-%% State Space representation via semi-discretization
+%% State-space representation via semi-discretization
 % In order to perform model reduction, we first want to find the state
 % space representation of our dynamical system, i.e. 
 % 
@@ -41,14 +41,13 @@
 % of ODEs for the pressure at each node. As such, $\mathbf{A_{21}}$ must
 % multiply out to the finite difference formula for the laplacian in each
 % equation.
-%% 
+%% Formulating the coefficient matrix $\mathbf{A}$
 % Define grid size and spacing (square for now)
-n=5; m=n;
+n=40; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
 
-%%
-% Populate the lower right quadrant, i.e. the discretized laplacian operator
+% Populate the lower left quadrant $\mathbf{A_{21}}$, i.e. the discretized laplacian operator
 r=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
 A21=toeplitz(r);
 
@@ -65,4 +64,38 @@ end
 A=[zeros(n^2) eye(n^2);
    A21 zeros(n^2)];
 
+%% Solve the full model using ODE45
+% Set up initial conditions of a parabola and integrate forward in time
+% 
+
+%%
+% Initial condition setup
+
+xx=1:1:n;
+yy=1:1:n;
+x0=20;
+y0=20;
+%choose C = height of parabola
+C=.05;
+
+k=15; % how many grid space for the radius of the parabol
+beta=C/(k*dy)^2;
+alfa=beta;
+ff=zeros(n);
+for i=1:n
+    for j=1:n
+        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C >= 0;
+        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C; 
+        end
+    end
+end
+p0=zeros(1,m*n);
+p0ff(:)';
+
+tspan = [0 10];
+[t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
 %plot(svd(A))
+
+function dp = myfun(t,p,A)
+dp=A*p
+end

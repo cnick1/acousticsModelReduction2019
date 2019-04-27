@@ -43,7 +43,7 @@
 % equation.
 %% Formulating the coefficient matrix $\mathbf{A}$
 % Define grid size and spacing (square for now)
-n=5; m=n;
+n=40; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
 
@@ -64,4 +64,52 @@ end
 A=[zeros(n^2) eye(n^2);
    A21 zeros(n^2)];
 
+%% Solve the full model using ODE45
+% Set up initial conditions of a parabola and integrate forward in time
+% 
+
+%%
+% Initial condition setup
+
+xx=1:1:n;
+yy=1:1:n;
+x0=20;
+y0=20;
+%choose C = height of parabola
+C=.05;
+
+k=15; % how many grid space for the radius of the parabol
+beta=C/(k*dy)^2;
+alfa=beta;
+ff=zeros(n);
+for i=1:n
+    for j=1:n
+        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C >= 0;
+        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C; 
+        end
+    end
+end
+p0=zeros(1,2*m*n);
+p0(1:m*n)=ff(:)';
+
+tspan = [0 10];
+[t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
 %plot(svd(A))
+
+
+ti=500
+%movie(F,1,2)
+jj=1;
+for i=1:6:ti
+
+mesh((1:n),(1:n),Mhr(:,:,i))
+
+view(-28, 66)
+%axis([0 10 0 10 -.05 .05])
+G(jj)=getframe(1,[38,30,473,373]);
+jj=jj+1;
+end
+
+function dp = myfun(t,p,A)
+dp=A*p;
+end
