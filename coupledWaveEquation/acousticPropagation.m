@@ -43,13 +43,17 @@
 % equation.
 %% Formulating the coefficient matrix $\mathbf{A}$
 % Define grid size and spacing (square for now)
+clear; close all; clc;
+% rho=1.2;, c=345;
+rho=-1;, c=1;
+
 n=40; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
 
 % Populate the lower left quadrant $\mathbf{A_{21}}$, i.e. the discretized laplacian operator
 r=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
-A21=toeplitz(r);
+A21=-rho * c^2 * toeplitz(r);
 
 %%
 % Set boundary element contributions to zero (artifact from making pressure
@@ -92,23 +96,19 @@ end
 p0=zeros(1,2*m*n);
 p0(1:m*n)=ff(:)';
 
-tspan = [0 10];
+tspan = [0 5];
 [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
 %plot(svd(A))
 
-
-ti=500
-%movie(F,1,2)
-jj=1;
-for i=1:6:ti
-
-mesh((1:n),(1:n),Mhr(:,:,i))
-
-view(-28, 66)
-%axis([0 10 0 10 -.05 .05])
-G(jj)=getframe(1,[38,30,473,373]);
-jj=jj+1;
+for k = 1:size(p,1)
+	mesh(xx,yy,vectomat(p(k,:),m,n));
+	M(k) = getframe;
 end
+
+v = VideoWriter('acousticWaveAttempt1.avi');
+open(v)
+writeVideo(v,movie(M))
+close(v)
 
 function dp = myfun(t,p,A)
 dp=A*p;
