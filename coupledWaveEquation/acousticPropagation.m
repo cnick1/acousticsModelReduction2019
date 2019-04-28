@@ -45,7 +45,7 @@
 % Define grid size and spacing (square for now)
 clear; close all; clc;
 % rho=1.2;, c=345;
-rho=-1;, c=1;
+rho=-1; c=1;
 
 n=40; m=n;
 dx=.25; dy=dx;
@@ -88,7 +88,7 @@ alfa=beta;
 ff=zeros(n);
 for i=1:n
     for j=1:n
-        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C >= 0;
+        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C >= 0
         ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C; 
         end
     end
@@ -96,19 +96,21 @@ end
 p0=zeros(1,2*m*n);
 p0(1:m*n)=ff(:)';
 
-tspan = [0 5];
+tspan = [0 50];
 [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
 %plot(svd(A))
-
 for k = 1:size(p,1)
-	mesh(xx,yy,vectomat(p(k,:),m,n));
-	M(k) = getframe;
+    lis(k)=sum(p(k,:));
 end
+for k = 1:size(p,1)
+	surf(xx,yy,vectomat(p(k,:),m,n));
+    axis([0 m 0 n -.1 .1])
+    drawnow;
+	Mframes(k) = getframe;
+end
+%F=movie(Mframes,1,60);
 
-v = VideoWriter('acousticWaveAttempt1.avi');
-open(v)
-writeVideo(v,movie(M))
-close(v)
+
 
 function dp = myfun(t,p,A)
 dp=A*p;
