@@ -13,8 +13,8 @@ dy=.25;
 %% Initial condition setup
 xx=1:1:n;
 yy=1:1:n;
-parabolaX0=8; % parabola center point
-parabolaY0=32;
+parabolaX0=20; % parabola center point
+parabolaY0=20;
 C=.05; % height of parabola
 
 k=15; % how many grid space for the radius of the parabol
@@ -87,11 +87,11 @@ M=zeros(n,n,ti);
 for i=1:ti
 M(:,:,i)=vectomat(cfdtd(:,i),n,n); % Convert pressure state vector to matrix for plotting
 
-    for ii=x0:x1 %This shows the building
-        for jj=y0:y1
-        M(ii,jj,i)=.01;
-        end
-    end
+%     for ii=x0:x1 %This shows the building
+%         for jj=y0:y1
+%         M(ii,jj,i)=.01;
+%         end
+%     end
 end
 
 
@@ -100,7 +100,7 @@ end
 jj=1;
 for i=1:5:ti
 
-mesh((1:n),(1:n),M(:,:,i))
+surf((1:n),(1:n),M(:,:,i))
 
 view(-28, 66)
 %axis([0 10 0 10 -.05 .05])
@@ -113,11 +113,11 @@ end
 Mhr=zeros(n,n,ti);
 for i=1:ti
 Mhr(:,:,i)=vectomat(cfdtdhr(:,i),n,n); % convert to matrix form
-    for ii=x0:x1 %This shows the building
-        for jj=y0:y1
-        Mhr(ii,jj,i)=.01; 
-        end
-    end
+%     for ii=x0:x1 %This shows the building
+%         for jj=y0:y1
+%         Mhr(ii,jj,i)=.01; 
+%         end
+%     end
 %fmodel(i)=M(15,20,i);
 end
 
@@ -127,7 +127,7 @@ end
 jj=1;
 for i=1:6:ti
 
-mesh((1:n),(1:n),Mhr(:,:,i))
+surf((1:n),(1:n),Mhr(:,:,i))
 
 view(-28, 66)
 %axis([0 10 0 10 -.05 .05])
