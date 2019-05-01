@@ -68,6 +68,7 @@ end
 A=[zeros(n^2) eye(n^2);
    A21 zeros(n^2)];
 
+% plot(svd(A))
 %% Solve the full model using ODE45
 % Set up initial conditions of a parabola and integrate forward in time
 % 
@@ -98,7 +99,7 @@ p0(1:m*n)=ff(:)';
 
 tspan = [0 50];
 [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
-%plot(svd(A))
+
 for k = 1:size(p,1)
     lis(k)=sum(p(k,:));
 end
