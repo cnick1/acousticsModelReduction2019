@@ -59,13 +59,7 @@ fdtdhr(:,i)=V*fdtdh(:,i);
 end
 
 cfdtdhr=fdtdhr(2*n^2+1:end,:); %Just the pressure variable from the reduced model
-%Mhr(:,:,1)=vectomat(cfdtd(:,1),n,n);
-% for i=1:ti
-% Mhr(:,:,i)=vectomat(cfdtdhr(:,i),n,n);  % convert to matrix form
-% end
-
 %%
-%fdtd=A*fdtd0+in*pul(1);
 fdtd=A*fdtd0;   % impulse
 
 for i=2:ti
@@ -87,11 +81,11 @@ M=zeros(n,n,ti);
 for i=1:ti
 M(:,:,i)=vectomat(cfdtd(:,i),n,n); % Convert pressure state vector to matrix for plotting
 
-%     for ii=x0:x1 %This shows the building
-%         for jj=y0:y1
-%         M(ii,jj,i)=.01;
-%         end
-%     end
+    for ii=x0:x1 %This shows the building
+        for jj=y0:y1
+        M(ii,jj,i)=.01;
+        end
+    end
 end
 
 
@@ -113,12 +107,13 @@ end
 Mhr=zeros(n,n,ti);
 for i=1:ti
 Mhr(:,:,i)=vectomat(cfdtdhr(:,i),n,n); % convert to matrix form
-%     for ii=x0:x1 %This shows the building
-%         for jj=y0:y1
-%         Mhr(ii,jj,i)=.01; 
-%         end
-%     end
-%fmodel(i)=M(15,20,i);
+
+    for ii=x0:x1 %This shows the building
+        for jj=y0:y1
+        Mhr(ii,jj,i)=.01; 
+        end
+    end
+
 end
 
 
