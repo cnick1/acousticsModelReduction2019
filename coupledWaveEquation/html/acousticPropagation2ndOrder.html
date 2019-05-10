@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Acoustic Wave Propagation using Wave Equation</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-05-01"><meta name="DC.source" content="acousticPropagation2ndOrder.m"><style type="text/css">
+      --><title>Acoustic Wave Propagation using Wave Equation</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-05-08"><meta name="DC.source" content="acousticPropagation2ndOrder.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -66,57 +66,81 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Acoustic Wave Propagation using Wave Equation</h1><!--introduction--><p>Model generation and reduction of acoustic wave propogation using the wave equation, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14091693394908288131.png" alt="$$ \ddot{p}=K \nabla^2 p $$" style="width:66px;height:16px;"></p><p>where <img src="acousticPropagation2ndOrder_eq09941021013676836398.png" alt="$p$" style="width:8px;height:10px;"> represents pressure and <img src="acousticPropagation2ndOrder_eq13388685568864705340.png" alt="$K = - \rho c^2$" style="width:63px;height:16px;">, where <img src="acousticPropagation2ndOrder_eq11905270608999804013.png" alt="$\rho$" style="width:7px;height:10px;"> is the uniform density and <img src="acousticPropagation2ndOrder_eq08422257486649890878.png" alt="$c$" style="width:6px;height:7px;"> is the speed of sound in the medium. In this version we will avoid state space and instead interpolate the transfer function.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Semi-discretization</a></li><li><a href="#2">Formulating the coefficient matrix <img src="acousticPropagation2ndOrder_eq04088523938794390934.png" alt="$\mathbf{A}$" style="width:12px;height:11px;"></a></li><li><a href="#6">Solve the full model using ODE45</a></li></ul></div><h2 id="1">Semi-discretization</h2><p>In order to perform model reduction, we first want to develop a model for our system which looks like:</p><p><img src="acousticPropagation2ndOrder_eq13021238103636058331.png" alt="$$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = B \mathbf{u}(t) $$" style="width:162px;height:15px;"></p><p><img src="acousticPropagation2ndOrder_eq01065365093803616255.png" alt="$$ \mathbf{y}(t) = C \mathbf{x}(t) + D \mathbf{u}(t) $$" style="width:138px;height:15px;"></p><p>We start by semi-discretizing the wave equation in space; this transforms the laplacian, which contains spacial first derivatives, into a collection of finite differences, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14385902810203721257.png" alt="$$ \nabla^2 p(i,j) = \frac{p(i+1,j)-2 p(i,j)+p(i-1,j)}{(\Delta x)^2} +&#xA;\frac{p(i,j+1)-2 p(i,j)+p(i,j-1)}{(\Delta y)^2} $$" style="width:509px;height:35px;"></p><p><a href="matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser')">Laplacian Finite Difference Wikipedia</a></p><p>This transforms the wave equation from a 2nd order PDE into m*n 2nd order coupled ODEs, where the xy grid size is m by n.</p><p>We can then define the state:</p><p><img src="acousticPropagation2ndOrder_eq09101860723307899311.png" alt="$$ \mathbf{x}(t) = \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} = \pmatrix{\mathbf{p} \cr \mathbf{\dot{p}}}$$" style="width:139px;height:35px;"></p><p>where <img src="acousticPropagation2ndOrder_eq15183278196474580888.png" alt="$\mathbf{p}$" style="width:9px;height:10px;"> is the columns of <img src="acousticPropagation2ndOrder_eq14827595236947239807.png" alt="$p(i,j)$" style="width:36px;height:15px;"> (the pressure at each node) stacked to form a vector. Writing our equations out in state space form now, we obtain</p><p><img src="acousticPropagation2ndOrder_eq03445203020622873065.png" alt="$$ \pmatrix{\mathbf{\dot{x}}_1 \cr \mathbf{\dot{x}}_2} = \pmatrix{\mathbf{0} &amp; \mathbf{I} \cr \mathbf{A_{21}} &amp; \mathbf{0}} \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} $$" style="width:174px;height:35px;"></p><p>where the equation for <img src="acousticPropagation2ndOrder_eq16784532356503737458.png" alt="$\mathbf{\dot{x}_2}$" style="width:14px;height:13px;"> expands to the coupled system of ODEs for the pressure at each node. As such, <img src="acousticPropagation2ndOrder_eq05334652706604020446.png" alt="$\mathbf{A_{21}}$" style="width:24px;height:13px;"> must multiply out to the finite difference formula for the laplacian in each equation.</p><h2 id="2">Formulating the coefficient matrix <img src="acousticPropagation2ndOrder_eq04088523938794390934.png" alt="$\mathbf{A}$" style="width:12px;height:11px;"></h2><p>Define grid size and spacing (square for now)</p><pre class="codeinput">clear; close <span class="string">all</span>; clc;
-<span class="comment">% rho=1.2;, c=345;</span>
-rho=-1; c=1;
+  </style></head><body><div class="content"><h1>Acoustic Wave Propagation using Wave Equation</h1><!--introduction--><p>Model generation and reduction of acoustic wave propogation using the wave equation, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14091693394908288131.png" alt="$$ \ddot{p}=K \nabla^2 p $$" style="width:66px;height:16px;"></p><p>where <img src="acousticPropagation2ndOrder_eq09941021013676836398.png" alt="$p$" style="width:8px;height:10px;"> represents pressure and <img src="acousticPropagation2ndOrder_eq13388685568864705340.png" alt="$K = - \rho c^2$" style="width:63px;height:16px;">, where <img src="acousticPropagation2ndOrder_eq11905270608999804013.png" alt="$\rho$" style="width:7px;height:10px;"> is the uniform density and <img src="acousticPropagation2ndOrder_eq08422257486649890878.png" alt="$c$" style="width:6px;height:7px;"> is the speed of sound in the medium. In this version we will avoid state space and instead interpolate the transfer function.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Semi-discretization</a></li><li><a href="#2">Formulating the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;"></a></li><li><a href="#6">Form Transfer Function <img src="acousticPropagation2ndOrder_eq10656380556888075385.png" alt="$\mathbf{H}(s)$" style="width:30px;height:15px;"></a></li></ul></div><h2 id="1">Semi-discretization</h2><p>In order to perform model reduction, we first want to develop a model for our system which looks like:</p><p><img src="acousticPropagation2ndOrder_eq04294991834503162306.png" alt="$$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = \mathbf{B u}(t) $$" style="width:162px;height:15px;"></p><p>We start by semi-discretizing the wave equation in space; this transforms the laplacian, which contains spacial first derivatives, into a collection of finite differences, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14385902810203721257.png" alt="$$ \nabla^2 p(i,j) = \frac{p(i+1,j)-2 p(i,j)+p(i-1,j)}{(\Delta x)^2} +&#xA;\frac{p(i,j+1)-2 p(i,j)+p(i,j-1)}{(\Delta y)^2} $$" style="width:509px;height:35px;"></p><p><a href="matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser')">Laplacian Finite Difference Wikipedia</a></p><p>This transforms the wave equation from a 2nd order PDE into m*n 2nd order coupled ODEs, where the xy grid size is m by n. The laplacian is turned into the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, which can be deduced from the discretization shown above.</p><h2 id="2">Formulating the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;"></h2><p>Define grid size and spacing (square for now)</p><pre class="codeinput">clear; close <span class="string">all</span>; clc;
+rho=1.2; c=345;
+<span class="comment">% rho=-1; c=1;</span>
 
-n=40; m=n;
+n=10; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
-</pre><p>Populate the lower left quadrant <img src="acousticPropagation2ndOrder_eq05334652706604020446.png" alt="$\mathbf{A_{21}}$" style="width:24px;height:13px;">, i.e. the discretized laplacian operator</p><pre class="codeinput">r=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
-A21=-rho * c^2 * toeplitz(r);
+</pre><p>Populate the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, i.e. the discretized laplacian operator</p><pre class="codeinput">r=-[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
+K=rho * c^2 * toeplitz(r);
 </pre><p>Set boundary element contributions to zero (artifact from making pressure matrix into a vector for state) (zero gives Dirichlet aka mirror BC).</p><pre class="codeinput"><span class="keyword">for</span> i = 1:n-1
-    A21(i*n+1,i*n)=0;
-    A21(i*n,i*n+1)=0;
+    K(i*n+1,i*n)=0;
+    K(i*n,i*n+1)=0;
 <span class="keyword">end</span>
-</pre><p>Form the full A matrix</p><pre class="codeinput">A=[zeros(n^2) eye(n^2);
-   A21 zeros(n^2)];
 
-<span class="comment">%plot(svd(A))</span>
-</pre><h2 id="6">Solve the full model using ODE45</h2><p>Set up initial conditions of a parabola and integrate forward in time</p><p>Initial condition setup</p><pre class="codeinput">xx=1:1:n;
+<span class="comment">%plot(svd(K))</span>
+
+C=eye(m*n);
+</pre><p>We also define our initial condition <img src="acousticPropagation2ndOrder_eq10018673505419955997.png" alt="$\mathbf{p0}$" style="width:17px;height:13px;"></p><pre class="codeinput">xx=1:1:n;
 yy=1:1:n;
-x0=20;
-y0=20;
-<span class="comment">%choose C = height of parabola</span>
-C=.05;
+x0=1;
+y0=1;
+<span class="comment">%choose parabHeight = height of parabola</span>
+parabHeight=.05;
 
-k=15; <span class="comment">% how many grid space for the radius of the parabola</span>
-beta=C/(k*dy)^2;
+k=2; <span class="comment">% how many grid space for the radius of the parabola</span>
+beta=parabHeight/(k*dy)^2;
 alfa=beta;
 ff=zeros(n);
 <span class="keyword">for</span> i=1:n
     <span class="keyword">for</span> j=1:n
-        <span class="keyword">if</span> -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C &gt;= 0
-        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C;
+        <span class="keyword">if</span> -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+parabHeight &gt;= 0
+        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+parabHeight;
         <span class="keyword">end</span>
     <span class="keyword">end</span>
 <span class="keyword">end</span>
-p0=zeros(1,2*m*n);
-p0(1:m*n)=ff(:)';
+p0=ff(:);
+</pre><h2 id="6">Form Transfer Function <img src="acousticPropagation2ndOrder_eq10656380556888075385.png" alt="$\mathbf{H}(s)$" style="width:30px;height:15px;"></h2><p>We form and plot the transfer function for the system, given by</p><p><img src="acousticPropagation2ndOrder_eq07895083584761718104.png" alt="$\mathbf{H}(s) = \mathbf{C}(s^2 + \mathbf{K})^-1 \mathbf{p0}$" style="width:152px;height:16px;"></p><pre class="codeinput">sampleNum=m*n*100;
+omega=logspace(-1,5,sampleNum);
 
-tspan = [0 1];
-[t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
+H=zeros(m*n,sampleNum);
+I = eye(m*n);
+<span class="keyword">for</span> i=1:sampleNum
+    H(:,i)=((1i*omega(i))^2*I+K)\p0;
+<span class="keyword">end</span>
 
-<span class="keyword">for</span> k = 1:size(p,1)
-    lis(k)=sum(p(k,:));
-<span class="keyword">end</span>
-<span class="keyword">for</span> k = 1:size(p,1)
-	surf(xx,yy,vectomat(p(k,:),m,n));
-    axis([0 m 0 n -.1 .1])
-    drawnow;
-	Mframes(k) = getframe;
-<span class="keyword">end</span>
-<span class="comment">%F=movie(Mframes,1,60);</span>
+figure
+<span class="comment">%for i=1:m*n</span>
+loglog(omega, abs(H(1,:)))
+hold <span class="string">on</span>
+<span class="comment">%end</span>
+
+
+
+
+
+
+
+
+<span class="comment">% %% Solve the full model using ODE45</span>
+<span class="comment">% % Set up initial conditions of a parabola and integrate forward in time</span>
+<span class="comment">% %</span>
+<span class="comment">%</span>
+<span class="comment">% tspan = [0 1];</span>
+<span class="comment">% [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);</span>
+<span class="comment">%</span>
+<span class="comment">% for k = 1:size(p,1)</span>
+<span class="comment">%     lis(k)=sum(p(k,:));</span>
+<span class="comment">% end</span>
+<span class="comment">% for k = 1:size(p,1)</span>
+<span class="comment">% 	surf(xx,yy,vectomat(p(k,:),m,n));</span>
+<span class="comment">%     axis([0 m 0 n -.1 .1])</span>
+<span class="comment">%     drawnow;</span>
+<span class="comment">% 	Mframes(k) = getframe;</span>
+<span class="comment">% end</span>
+<span class="comment">% %F=movie(Mframes,1,60);</span>
 
 
 
@@ -140,10 +164,8 @@ dp=A*p;
 % In order to perform model reduction, we first want to develop a model for
 % our system which looks like:
 % 
-% $$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = B \mathbf{u}(t) $$
-% 
-% $$ \mathbf{y}(t) = C \mathbf{x}(t) + D \mathbf{u}(t) $$
-% 
+% $$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = \mathbf{B u}(t) $$
+%  
 % We start by semi-discretizing the wave equation in space; this transforms
 % the laplacian, which contains spacial first derivatives, into a
 % collection of finite differences, i.e. 
@@ -154,92 +176,105 @@ dp=A*p;
 % <matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser') Laplacian Finite Difference Wikipedia>
 % 
 % This transforms the wave equation from a 2nd order PDE into m*n 2nd order
-% coupled ODEs, where the xy grid size is m by n. 
+% coupled ODEs, where the xy grid size is m by n. The laplacian is turned
+% into the coefficient matrix $\mathbf{K}$, which can be deduced from the
+% discretization shown above.
 % 
-% We can then define the state:
-% 
-% $$ \mathbf{x}(t) = \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} = \pmatrix{\mathbf{p} \cr \mathbf{\dot{p}}}$$
-% 
-% where $\mathbf{p}$ is the columns of $p(i,j)$ (the pressure at each node)
-% stacked to form a vector. Writing our equations out in state space form
-% now, we obtain
-%
-% $$ \pmatrix{\mathbf{\dot{x}}_1 \cr \mathbf{\dot{x}}_2} = \pmatrix{\mathbf{0} & \mathbf{I} \cr \mathbf{A_{21}} & \mathbf{0}} \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} $$
-%
-% where the equation for $\mathbf{\dot{x}_2}$ expands to the coupled system
-% of ODEs for the pressure at each node. As such, $\mathbf{A_{21}}$ must
-% multiply out to the finite difference formula for the laplacian in each
-% equation.
-%% Formulating the coefficient matrix $\mathbf{A}$
+%% Formulating the coefficient matrix $\mathbf{K}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-% rho=1.2;, c=345;
-rho=-1; c=1;
+rho=1.2; c=345;
+% rho=-1; c=1;
 
-n=40; m=n;
+n=10; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
 
 %%
-% Populate the lower left quadrant $\mathbf{A_{21}}$, i.e. the discretized laplacian operator
-r=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
-A21=-rho * c^2 * toeplitz(r);
+% Populate the coefficient matrix $\mathbf{K}$, i.e. the discretized laplacian operator
+r=-[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
+K=rho * c^2 * toeplitz(r);
 
 %%
 % Set boundary element contributions to zero (artifact from making pressure
 % matrix into a vector for state) (zero gives Dirichlet aka mirror BC).
 for i = 1:n-1 
-    A21(i*n+1,i*n)=0;
-    A21(i*n,i*n+1)=0;
+    K(i*n+1,i*n)=0;
+    K(i*n,i*n+1)=0;
 end
 
-%%
-% Form the full A matrix
-A=[zeros(n^2) eye(n^2);
-   A21 zeros(n^2)];
+%plot(svd(K))
 
-%plot(svd(A))
-%% Solve the full model using ODE45
-% Set up initial conditions of a parabola and integrate forward in time
-% 
+C=eye(m*n);
 
 %%
-% Initial condition setup
+% We also define our initial condition $\mathbf{p0}$
 
 xx=1:1:n;
 yy=1:1:n;
-x0=20;
-y0=20;
-%choose C = height of parabola
-C=.05;
+x0=1;
+y0=1;
+%choose parabHeight = height of parabola
+parabHeight=.05;
 
-k=15; % how many grid space for the radius of the parabola
-beta=C/(k*dy)^2;
+k=2; % how many grid space for the radius of the parabola
+beta=parabHeight/(k*dy)^2;
 alfa=beta;
 ff=zeros(n);
 for i=1:n
     for j=1:n
-        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C >= 0
-        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+C; 
+        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+parabHeight >= 0
+        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+parabHeight; 
         end
     end
 end
-p0=zeros(1,2*m*n);
-p0(1:m*n)=ff(:)';
+p0=ff(:);
 
-tspan = [0 1];
-[t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
+%% Form Transfer Function $\mathbf{H}(s)$
+% We form and plot the transfer function for the system, given by 
+%
+% $\mathbf{H}(s) = \mathbf{C}(s^2 + \mathbf{K})^-1 \mathbf{p0}$
+%
 
-for k = 1:size(p,1)
-    lis(k)=sum(p(k,:));
+sampleNum=m*n*100;
+omega=logspace(-1,5,sampleNum);
+
+H=zeros(m*n,sampleNum);
+I = eye(m*n);
+for i=1:sampleNum
+    H(:,i)=((1i*omega(i))^2*I+K)\p0;
 end
-for k = 1:size(p,1)
-	surf(xx,yy,vectomat(p(k,:),m,n));
-    axis([0 m 0 n -.1 .1])
-    drawnow;
-	Mframes(k) = getframe;
-end
-%F=movie(Mframes,1,60);
+
+figure
+%for i=1:m*n
+loglog(omega, abs(H(1,:)))
+hold on
+%end
+
+
+
+
+
+
+
+
+% %% Solve the full model using ODE45
+% % Set up initial conditions of a parabola and integrate forward in time
+% % 
+% 
+% tspan = [0 1];
+% [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
+% 
+% for k = 1:size(p,1)
+%     lis(k)=sum(p(k,:));
+% end
+% for k = 1:size(p,1)
+% 	surf(xx,yy,vectomat(p(k,:),m,n));
+%     axis([0 m 0 n -.1 .1])
+%     drawnow;
+% 	Mframes(k) = getframe;
+% end
+% %F=movie(Mframes,1,60);
 
 
 

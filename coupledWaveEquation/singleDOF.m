@@ -35,14 +35,14 @@ clear; close all; clc;
 rho=1.2; c=345;
 % rho=-1; c=1;
 
-n=40; m=n;
+n=3; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
 
 %%
 % Populate the coefficient matrix $\mathbf{K}$, i.e. the discretized laplacian operator
-row=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
-K=-rho * c^2 * toeplitz(row);
+r=-[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
+K=rho * c^2 * toeplitz(r);
 
 %%
 % Set boundary element contributions to zero (artifact from making pressure
@@ -61,8 +61,8 @@ C=eye(m*n);
 
 xx=1:1:n;
 yy=1:1:n;
-x0=10;
-y0=x0;
+x0=1;
+y0=1;
 %choose parabHeight = height of parabola
 parabHeight=.05;
 
@@ -85,76 +85,45 @@ p0=ff(:);
 % $\mathbf{H}(s) = \mathbf{C}(s^2 + \mathbf{K})^-1 \mathbf{p0}$
 %
 
-sampleNum=16^2;
-omegas=logspace(1,5,sampleNum);
+sampleNum=m*n*100;
+omega=logspace(-3,5,sampleNum);
 
 H=zeros(m*n,sampleNum);
 I = eye(m*n);
 for i=1:sampleNum
-    H(:,i)=((1i*omegas(i))^2*I+K)\p0;
+    H(:,i)=((1i*omega(i))^2*I+K)\p0;
 end
-
-
 
 figure
-loglog(omegas, abs(H(1,:)))
-
-r=sampleNum;
-si=omegas;
-Vr=H;
-
-Kr=Vr'*K*Vr;
+%for i=1:m*n
+loglog(omega, abs(H(1,:)))
+hold on
+%end
 
 
 
-%% Solve the full model using ODE45
-% Set up initial conditions of a parabola and integrate forward in time
+
+
+
+
+
+% %% Solve the full model using ODE45
+% % Set up initial conditions of a parabola and integrate forward in time
+% % 
 % 
-
-%%
-% Form the full A matrix
-A=[zeros(n^2) eye(n^2);
-   -K zeros(n^2)];
-
-pr0=zeros(1,2*m*n);
-pr0(1:m*n)=ff(:);
-
-tspan = [0 0.01];
-[t, p] = ode45(@(t,p) myfun(t,p,A), tspan, pr0);
-
-for k = 1:size(p,1)
-    lis(k)=sum(p(k,:));
-end
-for k = 1:size(p,1)
-	surf(vectomat(p(k,:),m,n));
-    axis([0 m 0 n -.1 .1])
-    drawnow;
-	Mframes(k) = getframe;
-end
-
-
-%% Solve the reduced model using ODE45
-% Set up initial conditions of a parabola and integrate forward in time
+% tspan = [0 1];
+% [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
 % 
-
-Ar=[zeros(r) eye(r);
-   -Kr zeros(r)];
-
-pr0=zeros(1,2*r);
-pr0(1:r)=Vr'*p0;
-
-tspan = [0 .01];
-[t, pr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, pr0);
-
-for k = 1:size(pr,1)
-    lis(k)=sum(pr(k,:));
-end
-for k = 1:size(pr,1)
-	surf(vectomat(pr(k,:),sqrt(r),sqrt(r)));
-    axis([0 sqrt(r) 0 sqrt(r) -.1 .1])
-    drawnow;
-	Mrframes(k) = getframe;
-end
+% for k = 1:size(p,1)
+%     lis(k)=sum(p(k,:));
+% end
+% for k = 1:size(p,1)
+% 	surf(xx,yy,vectomat(p(k,:),m,n));
+%     axis([0 m 0 n -.1 .1])
+%     drawnow;
+% 	Mframes(k) = getframe;
+% end
+% %F=movie(Mframes,1,60);
 
 
 
