@@ -4,10 +4,10 @@
 % 
 % $$ \ddot{p}=K \nabla^2 p $$
 %
-% where $p$ represents pressure and $K = - \rho c^2$, where $\rho$ is the
+% where $p$ represents pressure and $K = \rho c^2$, where $\rho$ is the
 % uniform density and $c$ is the speed of sound in the medium.
-% In this version we will avoid state space and instead interpolate the
-% transfer function.
+% In this version we will avoid state space and instead interpolate via
+% Galerkin projection.
  
 %% Semi-discretization
 % In order to perform model reduction, we first want to develop a model for
@@ -29,7 +29,7 @@
 % into the coefficient matrix $\mathbf{K}$, which can be deduced from the
 % discretization shown above.
 % 
-%% Formulating the coefficient matrix $\mathbf{K}$
+%% Formulating the system matrices $\mathbf{K}$ and $\mathbf{B}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
 rho=1.2; c=345;
@@ -40,7 +40,10 @@ dx=.25; dy=dx;
 fullDim=m*n;
 
 %%
-% Populate the coefficient matrix $\mathbf{K}$, i.e. the discretized laplacian operator
+% Populate the coefficient matrix $\mathbf{K}$, i.e. the discretized
+% laplacian operator. It has an almost toeplitz form, with some extra zeros
+% on the off diagonal for boundary element conditions.
+
 row=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
 K=-rho * c^2 * toeplitz(row);
 
@@ -57,109 +60,117 @@ end
 C=eye(m*n);
 
 %%
-% We also define our initial condition $\mathbf{p0}$
+% We also define our initial condition $\mathbf{B=p0}$, where
+% $\mathbf{u}(t)$ is an impulse.
 
 xx=1:1:n;
 yy=1:1:n;
-x0=20;
-y0=x0;
+parab_x0=20;
+parab_y0=parab_x0;
 %choose parabHeight = height of parabola
 parabHeight=.05;
 
-k=2; % how many grid space for the radius of the parabola
-beta=parabHeight/(k*dy)^2;
+parabRadius=10; % how many grid space for the radius of the parabola
+beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
 ff=zeros(n);
 for i=1:n
     for j=1:n
-        if -alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+parabHeight >= 0
-        ff(i,j)=-alfa*(xx(i) -x0)^2-beta*(yy(j)-y0)^2+parabHeight; 
+        if -alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight >= 0
+        ff(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight; 
         end
     end
 end
-p0=ff(:);
+B=ff(:);
 
-%% Form Transfer Function $\mathbf{H}(s)$
-% We form and plot the transfer function for the system, given by 
-%
-% $\mathbf{H}(s) = \mathbf{C}(s^2 + \mathbf{K})^-1 \mathbf{p0}$
-%
-
-sampleNum=15^2;
-omegas=logspace(1,5,sampleNum);
-
-H=zeros(m*n,sampleNum);
-I = eye(m*n);
-for i=1:sampleNum
-    H(:,i)=((1i*omegas(i))^2*I+K)\p0;
+%% Solve the full model using ODE45 as a baseline
+% Form the full A matrix and integrate using ODE45
+% 
+runFull=0;
+if runFull
+    A=[zeros(n^2) eye(n^2);
+        -K zeros(n^2)];
+    
+    x0=zeros(1,2*m*n);
+    x0(1:m*n)=B;
+    
+    tspan = [0 0.01];
+    [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 end
 
+%% Form Galerkin reduction basis $\mathbf{V_r}$
+% We form reduction basis $\mathbf{V_r}$ for the system, given by an
+% orthonormal basis for the space spanned by the vectors 
+%
+% $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
+%
 
+r=5^2;
+si=logspace(1,5,r);
 
-figure
-loglog(omegas, abs(H(1,:)))
+Vi=zeros(m*n,r);
+I = eye(m*n);
+for i=1:r
+    Vi(:,i)=(si(i)^2*I+K)\B;
+end
 
-r=sampleNum;
-si=omegas;
-[Vr,~] = svd(H,'econ');
-
-Kr=Vr'*K*Vr;
-
-
-
-%% Solve the full model using ODE45
-% Set up initial conditions of a parabola and integrate forward in time
-% 
+% figure
+% loglog(si, abs(H(1,:)))
 
 %%
-% Form the full A matrix
-A=[zeros(n^2) eye(n^2);
-   -K zeros(n^2)];
+% Rather than using Matlab's orth command, we use svd in case $\mathbf{V_i}$ is
+% considered rank defficient. Orth calls svd according to Matlab
+% documentation, so this just ensures that $\mathbf{V_i}$ has the correct dimensions
+% and that $\mathbf{V_r^T V_r = I}$
 
-pf0=zeros(1,2*m*n);
-pf0(1:m*n)=ff(:);
-
-tspan = [0 0.01];
-[t, p] = ode45(@(t,p) myfun(t,p,A), tspan, pf0);
-
+[Vr,~] = svd(Vi,'econ');
 
 %% Solve the reduced model using ODE45
-% Set up initial conditions of a parabola and integrate forward in time
+% Set up the reduced system matrices using Galerkin projection
+%
+% $$ \mathbf{Kr = V_r^T K V_r} $$
+%
+% $$ \mathbf{Br = V_r^T B} $$
 % 
+
+Kr=Vr'*K*Vr;
+Br=Vr'*B;
 
 Ar=[zeros(r) eye(r);
    -Kr zeros(r)];
 
-pr0=zeros(1,2*r);
-pr0(1:r)=Vr'*p0;
+xr0=zeros(1,2*r);
+xr0(1:r)=Br;
 
-tspan = [0 .1];
-[t, pr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, pr0);
+runReduced=0;
+    if runReduced
+    tspan = [0 .01];
+    [t, pr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
+end
 
 %% Plot the animations
 %
+if runFull==1
+    fullP=p(:,1:m*n);
 
-fullP=p(:,1:m*n);
-
-for k = 1:size(fullP,1)
-	surf(vectomat(fullP(k,:),m,n));
-    axis([0 m 0 n -.1 .1])
-    drawnow;
-	Mframes(k) = getframe;
+    for k = 1:size(fullP,1)
+        surf(vectomat(fullP(k,:),m,n));
+        axis([0 m 0 n -.1 .1])
+        drawnow;
+        Mframes(k) = getframe;
+    end
 end
 
-reducedP=Vr*pr(:,1:sampleNum)';
+if runReduced
+    reducedP=Vr*pr(:,1:r)';
 
-for k = 1:size(reducedP, 2)
-	surf(vectomat(reducedP(:,k),m,n));
-    axis([0 m 0 n -.1 .1])
-    drawnow;
-	Mrframes(k) = getframe;
+    for k = 1:size(reducedP, 2)
+        surf(vectomat(reducedP(:,k),m,n));
+        axis([0 m 0 n -.1 .1])
+        drawnow;
+        Mrframes(k) = getframe;
+    end
 end
-
-
-
-
 
 function dp = myfun(t,p,A)
 dp=A*p;
