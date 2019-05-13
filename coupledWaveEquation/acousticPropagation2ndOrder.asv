@@ -106,20 +106,19 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=500;
-irkaIters=10;
-si=zeros(irkaIters+1,r);
-si(1,:)=logspace(1,5,r);
+r=100;
+irkaIters=3;
+si=zeros(irkaIters,r);
+si(1:)=logspace(1,5,r);
 I = eye(n);
-Vi=zeros(irkaIters,n,r);
-Vr=zeros(irkaIters,n,r);
-
+Vi=zeros(n,r);
+    
 for j=1:irkaIters
     for i=1:r
-        Vi(j,:,i)=(si(j,i)^2*I+K)\B;
+        Vi(:,i)=(si(i)^2*I+K)\B;
     end
-    [Vr(j,:,:),~] = svd(squeeze(Vi(j,:,:)),'econ');
-    si(j+1,:) = -sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    [Vr,~] = svd(Vi,'econ');
+    si(irkaIters) = -eig(Vr'*K*Vr);
 end
 
 % figure
@@ -139,33 +138,31 @@ end
 %
 % $$ \mathbf{Br = V_r^T B} $$
 % 
-figure
-hold on
-for iter=1:irkaIters
-    Kr=squeeze(Vr(iter,:,:))'*K*squeeze(Vr(iter,:,:));
-    Br=squeeze(Vr(iter,:,:))'*B;
 
-    Ar=[zeros(r) eye(r);
-       -Kr zeros(r)];
+Kr=Vr'*K*Vr;
+Br=Vr'*B;
 
-    xr0=zeros(1,2*r);
-    xr0(1:r)=Br;
+Ar=[zeros(r) eye(r);
+   -Kr zeros(r)];
 
-    tspan = [0 tf];
-    [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
+xr0=zeros(1,2*r);
+xr0(1:r)=Br;
 
-    % Project back to full space
-    reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
+tspan = [0 tf];
+[t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
-    % Interpolate reducedP to match the dimension of fullP
-    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
+% Project back to full space
+reducedP=(Vr*xr(:,1:r)')';
 
-    errorP(iter,:,:)=fullP-reducedPinterp;
-    plot(errorP(iter,:,625))
-end
+% Interpolate reducedP to match the dimension of fullP
+reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
+
+errorP=fullP-reducedPinterp;
+
 %% Plot error for particular node
 %
 figure
+plot(errorP(:,625))
 hold on
 plot(reducedPinterp(:,625))
 plot(fullP(:,625))
