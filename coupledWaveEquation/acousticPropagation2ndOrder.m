@@ -32,7 +32,7 @@
 %% Formulating the system matrices $\mathbf{K}$ and $\mathbf{B}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-animate=0; %Set to 0 to save time when doing comments
+animate=1; %Set to 0 to save time when doing comments
 
 rho=1.2; c=345;
 % rho=-1; c=1;
@@ -92,7 +92,7 @@ A=[zeros(xdim^2) eye(xdim^2);
 x0=zeros(1,2*n);
 x0(1:n)=B;
 
-tf=0.02;
+tf=0.01;
 tspan = [0 tf];
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
@@ -106,7 +106,8 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=16^2;
+r=10;
+irkaIter
 si=logspace(1,5,r);
 
 Vi=zeros(n,r);
@@ -116,7 +117,7 @@ for i=1:r
 end
 
 % figure
-% loglog(si, abs(H(1,:)))
+% loglog(si, abs(Vi(1,:)))
 
 %%
 % Rather than using Matlab's orth command, we use svd in case $\mathbf{V_i}$ is
@@ -164,7 +165,8 @@ plot(fullP(:,625))
 %% Plot the animations
 %
 
-if animate    
+if animate  
+    figure
     for k = 1:size(fullP,1)
         surf(vectomat(fullP(k,:)-reducedPinterp(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
