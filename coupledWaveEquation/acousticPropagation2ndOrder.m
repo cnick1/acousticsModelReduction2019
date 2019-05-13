@@ -32,7 +32,7 @@
 %% Formulating the system matrices $\mathbf{K}$ and $\mathbf{B}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-animate=0; %Set to 0 to save time when doing comments
+animate=1; %Set to 0 to save time when doing comments
 
 rho=1.2; c=345;
 % rho=-1; c=1;
@@ -69,7 +69,7 @@ parab_y0=parab_x0;
 %choose parabHeight = height of parabola
 parabHeight=.05;
 
-parabRadius=10; % how many grid space for the radius of the parabola
+parabRadius=15; % how many grid space for the radius of the parabola
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
 ff=zeros(xdim);
@@ -92,7 +92,7 @@ A=[zeros(xdim^2) eye(xdim^2);
 x0=zeros(1,2*n);
 x0(1:n)=B;
 
-tf=0.01;
+tf=0.02;
 tspan = [0 tf];
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
@@ -106,8 +106,8 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=500;
-irkaIters=10;
+r=300;
+irkaIters=1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
 I = eye(n);
@@ -165,8 +165,6 @@ for iter=1:irkaIters
 end
 %% Plot error for particular node
 %
-figure
-hold on
 plot(reducedPinterp(:,625))
 plot(fullP(:,625))
 %% Plot the animations
