@@ -69,7 +69,7 @@ parab_y0=parab_x0;
 %choose parabHeight = height of parabola
 parabHeight=.05;
 
-parabRadius=15; % how many grid space for the radius of the parabola
+parabRadius=10; % how many grid space for the radius of the parabola
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
 ff=zeros(xdim);
@@ -90,10 +90,11 @@ A=[zeros(xdim^2) eye(xdim^2);
     -K zeros(xdim^2)];
 
 x0=zeros(1,2*n);
-x0(n+1:2*n)=B;
+x0(1:n)=B;
 
 tf=0.05;
-tspan = [0 tf];
+ti=500
+tspan = linspace(0,tf,ti); %[0 tf]
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
@@ -106,7 +107,7 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=16^2;
+r=40^2;
 irkaIters=1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
@@ -118,10 +119,12 @@ for j=1:irkaIters
     for i=1:r
         Vi(j,:,i)=(si(j,i)^2*I+K)\B;
     end
-    [Vr(j,:,:),~] = svd(squeeze(Vi(j,:,:)),'econ');
-    si(j+1,:) = -sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); % ,'econ'); %or use SVD? because orth uses SVD
+    si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
 end
 
+rEffec=rank(squeeze(Vi));
+VrEffec=
 % figure
 % loglog(si, abs(Vi(1,:)))
 
@@ -149,45 +152,41 @@ for iter=1:irkaIters
        -Kr zeros(r)];
 
     xr0=zeros(1,2*r);
-    xr0(r+1:2*r)=Br;
+    xr0(1:r)=Br;
 
-    tspan = [0 tf];
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     % Project back to full space
     reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
 
-    % Interpolate reducedP to match the dimension of fullP
-    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
-
-    errorP(iter,:,:)=fullP-reducedPinterp;
+    errorP(iter,:,:)=fullP-reducedP;
     plot(errorP(iter,:,625))
 end
 %% Plot error for particular node
 %
-plot(reducedPinterp(:,625))
+plot(reducedP(:,625))
 plot(fullP(:,625))
 %% Plot the animations
 %
 
 if animate  
     figure
-    for k = 1:size(fullP,1)
-        surf(vectomat(fullP(k,:)-reducedPinterp(k,:),ydim,xdim));
+    for k = 1:ti
+        surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         errorFrames(k) = getframe;
     end
     
-    for k = 1:size(fullP,1)
+    for k = 1:ti
         surf(vectomat(fullP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mframes(k) = getframe;
     end
 
-    for k = 1:size(reducedPinterp, 1)
-        surf(vectomat(reducedPinterp(k,:),ydim,xdim));
+    for k = 1:ti
+        surf(vectomat(reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mrframes(k) = getframe;

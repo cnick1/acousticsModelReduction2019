@@ -92,8 +92,9 @@ A=[zeros(xdim^2) eye(xdim^2);
 x0=zeros(1,2*n);
 x0(1:n)=B;
 
-tf=0.02;
-tspan = linspace(0,tf,500); %[0 tf]
+tf=0.05;
+ti=500;
+tspan = linspace(0,tf,ti); %[0 tf]
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
@@ -106,10 +107,11 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=16^2;
+r=15^2;
 irkaIters=1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
+%si(1,:)=linspace(10,10^5,r);
 I = eye(n);
 Vi=zeros(irkaIters,n,r);
 Vr=zeros(irkaIters,n,r);
@@ -122,6 +124,8 @@ for j=1:irkaIters
     si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
 end
 
+rEffec=rank(squeeze(Vi));
+VrEffec=squeeze(Vr(j,:,1:rEffec));
 % figure
 % loglog(si, abs(Vi(1,:)))
 
@@ -141,9 +145,9 @@ end
 % 
 figure
 hold on
-for iter=1:irkaIters
-    Kr=squeeze(Vr(iter,:,:))'*K*squeeze(Vr(iter,:,:));
-    Br=squeeze(Vr(iter,:,:))'*B;
+for j=1:irkaIters
+    Kr=squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:));
+    Br=squeeze(Vr(j,:,:))'*B;
 
     Ar=[zeros(r) eye(r);
        -Kr zeros(r)];
@@ -154,39 +158,36 @@ for iter=1:irkaIters
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     % Project back to full space
-    reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
+    reducedP=(squeeze(Vr(j,:,:))*xr(:,1:r)')';
 
-    % Interpolate reducedP to match the dimension of fullP
-    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
-
-    errorP(iter,:,:)=fullP-reducedPinterp;
-    plot(errorP(iter,:,625))
+    errorP(j,:,:)=fullP-reducedP;
+    plot(errorP(j,:,625))
 end
 %% Plot error for particular node
 %
-plot(reducedPinterp(:,625))
+plot(reducedP(:,625))
 plot(fullP(:,625))
 %% Plot the animations
 %
 
 if animate  
     figure
-    for k = 1:size(fullP,1)
-        surf(vectomat(fullP(k,:)-reducedPinterp(k,:),ydim,xdim));
+    for k = 1:ti
+        surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         errorFrames(k) = getframe;
     end
     
-    for k = 1:size(fullP,1)
+    for k = 1:ti
         surf(vectomat(fullP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mframes(k) = getframe;
     end
 
-    for k = 1:size(reducedPinterp, 1)
-        surf(vectomat(reducedPinterp(k,:),ydim,xdim));
+    for k = 1:ti
+        surf(vectomat(reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mrframes(k) = getframe;
