@@ -69,7 +69,7 @@ parab_y0=parab_x0;
 %choose parabHeight = height of parabola
 parabHeight=.05;
 
-parabRadius=10; % how many grid space for the radius of the parabola
+parabRadius=15; % how many grid space for the radius of the parabola
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
 ff=zeros(xdim);
@@ -90,9 +90,9 @@ A=[zeros(xdim^2) eye(xdim^2);
     -K zeros(xdim^2)];
 
 x0=zeros(1,2*n);
-x0(1:n)=B;
+x0(n+1:2*n)=B;
 
-tf=0.01;
+tf=0.05;
 tspan = [0 tf];
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
@@ -106,19 +106,20 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=100;
-irkaIters=3;
-si=zeros(irkaIters,r);
-si(1:)=logspace(1,5,r);
+r=16^2;
+irkaIters=1;
+si=zeros(irkaIters+1,r);
+si(1,:)=logspace(1,5,r);
 I = eye(n);
-Vi=zeros(n,r);
-    
+Vi=zeros(irkaIters,n,r);
+Vr=zeros(irkaIters,n,r);
+
 for j=1:irkaIters
     for i=1:r
-        Vi(:,i)=(si(i)^2*I+K)\B;
+        Vi(j,:,i)=(si(j,i)^2*I+K)\B;
     end
-    [Vr,~] = svd(Vi,'econ');
-    si(irkaIters) = -eig(Vr'*K*Vr);
+    [Vr(j,:,:),~] = svd(squeeze(Vi(j,:,:)),'econ');
+    si(j+1,:) = -sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
 end
 
 % figure
@@ -138,32 +139,32 @@ end
 %
 % $$ \mathbf{Br = V_r^T B} $$
 % 
+figure
+hold on
+for iter=1:irkaIters
+    Kr=squeeze(Vr(iter,:,:))'*K*squeeze(Vr(iter,:,:));
+    Br=squeeze(Vr(iter,:,:))'*B;
 
-Kr=Vr'*K*Vr;
-Br=Vr'*B;
+    Ar=[zeros(r) eye(r);
+       -Kr zeros(r)];
 
-Ar=[zeros(r) eye(r);
-   -Kr zeros(r)];
+    xr0=zeros(1,2*r);
+    xr0(r+1:2*r)=Br;
 
-xr0=zeros(1,2*r);
-xr0(1:r)=Br;
+    tspan = [0 tf];
+    [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
-tspan = [0 tf];
-[t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
+    % Project back to full space
+    reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
 
-% Project back to full space
-reducedP=(Vr*xr(:,1:r)')';
+    % Interpolate reducedP to match the dimension of fullP
+    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
 
-% Interpolate reducedP to match the dimension of fullP
-reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
-
-errorP=fullP-reducedPinterp;
-
+    errorP(iter,:,:)=fullP-reducedPinterp;
+    plot(errorP(iter,:,625))
+end
 %% Plot error for particular node
 %
-figure
-plot(errorP(:,625))
-hold on
 plot(reducedPinterp(:,625))
 plot(fullP(:,625))
 %% Plot the animations

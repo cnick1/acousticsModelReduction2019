@@ -32,7 +32,7 @@
 %% Formulating the system matrices $\mathbf{K}$ and $\mathbf{B}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-animate=1; %Set to 0 to save time when doing comments
+animate=0; %Set to 0 to save time when doing comments
 
 rho=1.2; c=345;
 % rho=-1; c=1;
@@ -69,7 +69,7 @@ parab_y0=parab_x0;
 %choose parabHeight = height of parabola
 parabHeight=.05;
 
-parabRadius=15; % how many grid space for the radius of the parabola
+parabRadius=10; % how many grid space for the radius of the parabola
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
 ff=zeros(xdim);
@@ -93,7 +93,7 @@ x0=zeros(1,2*n);
 x0(1:n)=B;
 
 tf=0.02;
-tspan = [0 tf];
+tspan = linspace(0,tf,500); %[0 tf]
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
@@ -106,7 +106,7 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=300;
+r=16^2;
 irkaIters=1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
@@ -118,8 +118,8 @@ for j=1:irkaIters
     for i=1:r
         Vi(j,:,i)=(si(j,i)^2*I+K)\B;
     end
-    [Vr(j,:,:),~] = svd(squeeze(Vi(j,:,:)),'econ');
-    si(j+1,:) = -sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); % ,'econ'); %or use SVD? because orth uses SVD
+    si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
 end
 
 % figure
@@ -151,7 +151,6 @@ for iter=1:irkaIters
     xr0=zeros(1,2*r);
     xr0(1:r)=Br;
 
-    tspan = [0 tf];
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     % Project back to full space
