@@ -44,20 +44,21 @@
 %% Formulating the coefficient matrix $\mathbf{A}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-% rho=1.2;, c=345;
-rho=-1; c=1;
+rho=1.2; c=345;
+% rho=-1; c=1;
 
 n=40; m=n;
 dx=.25; dy=dx;
 fullDim=m*n;
 
+%%
 % Populate the lower left quadrant $\mathbf{A_{21}}$, i.e. the discretized laplacian operator
 r=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, m-2) 1/dx^2 zeros(1,fullDim-(m+1))];
-A21=-rho * c^2 * toeplitz(r);
+A21=rho * c^2 * toeplitz(r);
 
 %%
 % Set boundary element contributions to zero (artifact from making pressure
-% matrix into a vector for state)
+% matrix into a vector for state) (zero gives Dirichlet aka mirror BC).
 for i = 1:n-1 
     A21(i*n+1,i*n)=0;
     A21(i*n,i*n+1)=0;
@@ -68,6 +69,7 @@ end
 A=[zeros(n^2) eye(n^2);
    A21 zeros(n^2)];
 
+%plot(svd(A))
 %% Solve the full model using ODE45
 % Set up initial conditions of a parabola and integrate forward in time
 % 
@@ -82,7 +84,7 @@ y0=20;
 %choose C = height of parabola
 C=.05;
 
-k=15; % how many grid space for the radius of the parabol
+k=15; % how many grid space for the radius of the parabola
 beta=C/(k*dy)^2;
 alfa=beta;
 ff=zeros(n);
@@ -96,9 +98,9 @@ end
 p0=zeros(1,2*m*n);
 p0(1:m*n)=ff(:)';
 
-tspan = [0 50];
+tspan = [0 0.01];
 [t, p] = ode45(@(t,p) myfun(t,p,A), tspan, p0);
-%plot(svd(A))
+
 for k = 1:size(p,1)
     lis(k)=sum(p(k,:));
 end
@@ -108,7 +110,6 @@ for k = 1:size(p,1)
     drawnow;
 	Mframes(k) = getframe;
 end
-%F=movie(Mframes,1,60);
 
 
 

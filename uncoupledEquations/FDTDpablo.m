@@ -143,3 +143,5 @@ xlabel('time steps')
 ylabel('Pressure')
 grid on
 legend( 'FDTD',['r=',num2str(redstep),', Arnoldi'])
+
+plot(squeeze(M(12,21,:)))
