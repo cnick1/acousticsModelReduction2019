@@ -59,6 +59,12 @@ end
 %plot(svd(K))
 
 %%
+% We also can define a damping matrix D. Here we do proportional damping.
+
+Alpha = 0.00003;
+D = Alpha*K;
+
+%%
 % We also define our initial condition $\mathbf{B=p0}$, where
 % $\mathbf{u}(t)$ is an impulse.
 
@@ -87,13 +93,14 @@ B=ff(:);
 % 
 
 A=[zeros(xdim^2) eye(xdim^2);
-    -K zeros(xdim^2)];
+    -K -D];
 
 x0=zeros(1,2*n);
 x0(1:n)=B;
 
-tf=0.02;
-tspan = linspace(0,tf,500); %[0 tf]
+tf=0.05;
+ti=500;
+tspan = linspace(0,tf,ti); %[0 tf]
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
@@ -106,17 +113,18 @@ fullP=x(:,1:n);
 % $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
 %
 
-r=16^2;
+r=15^2;
 irkaIters=1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
+%si(1,:)=linspace(10,10^5,r);
 I = eye(n);
 Vi=zeros(irkaIters,n,r);
 Vr=zeros(irkaIters,n,r);
 
 for j=1:irkaIters
     for i=1:r
-        Vi(j,:,i)=(si(j,i)^2*I+K)\B;
+        Vi(j,:,i)=(si(j,i)^2*I+si(j,i)*D+K)\B;
     end
     [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); % ,'econ'); %or use SVD? because orth uses SVD
     si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
@@ -141,52 +149,55 @@ end
 % 
 figure
 hold on
-for iter=1:irkaIters
-    Kr=squeeze(Vr(iter,:,:))'*K*squeeze(Vr(iter,:,:));
-    Br=squeeze(Vr(iter,:,:))'*B;
+for j=1:irkaIters
+    rEffec=r;
+    VrEffec=squeeze(Vr(j,:,:));
+    
+    Kr=VrEffec'*K*VrEffec;
+    Br=VrEffec'*B;
+    Dr=VrEffec'*D*VrEffec;
+    
+    Ar=[zeros(rEffec) eye(rEffec);
+       -Kr -Dr];
 
-    Ar=[zeros(r) eye(r);
-       -Kr zeros(r)];
-
-    xr0=zeros(1,2*r);
-    xr0(1:r)=Br;
+    xr0=zeros(1,2*rEffec);
+    xr0(1:rEffec)=Br;
 
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     % Project back to full space
-    reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
+    reducedP=(VrEffec*xr(:,1:rEffec)')';
 
-    % Interpolate reducedP to match the dimension of fullP
-    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
-
-    errorP(iter,:,:)=fullP-reducedPinterp;
-    plot(errorP(iter,:,625))
+    errorP(j,:,:)=fullP-reducedP;
+    plot(errorP(j,:,625))
 end
 %% Plot error for particular node
 %
-plot(reducedPinterp(:,625))
+plot(reducedP(:,625))
 plot(fullP(:,625))
+legend('E','R','F');
+
 %% Plot the animations
 %
 
 if animate  
     figure
-    for k = 1:size(fullP,1)
-        surf(vectomat(fullP(k,:)-reducedPinterp(k,:),ydim,xdim));
+    for k = 1:ti
+        surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         errorFrames(k) = getframe;
     end
     
-    for k = 1:size(fullP,1)
+    for k = 1:ti
         surf(vectomat(fullP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mframes(k) = getframe;
     end
 
-    for k = 1:size(reducedPinterp, 1)
-        surf(vectomat(reducedPinterp(k,:),ydim,xdim));
+    for k = 1:ti
+        surf(vectomat(reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mrframes(k) = getframe;
