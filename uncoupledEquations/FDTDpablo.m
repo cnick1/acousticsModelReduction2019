@@ -81,22 +81,21 @@ M=zeros(n,n,ti);
 for i=1:ti
 M(:,:,i)=vectomat(cfdtd(:,i),n,n); % Convert pressure state vector to matrix for plotting
 
-    for ii=x0:x1 %This shows the building
-        for jj=y0:y1
-        M(ii,jj,i)=.01;
-        end
-    end
+%     for ii=x0:x1 %This shows the building
+%         for jj=y0:y1
+%         M(ii,jj,i)=.01;
+%         end
+%     end
 end
 
 
 
 %movie(F,1,2)
 jj=1;
-for i=1:5:ti
+for i=1:3:ti
 
 surf((1:n),(1:n),M(:,:,i))
-
-view(-28, 66)
+axis([0 n 0 n -.1 .1])
 %axis([0 10 0 10 -.05 .05])
 F(jj)=getframe(1,[38,30,473,373]);
 jj=jj+1;
@@ -108,11 +107,11 @@ Mhr=zeros(n,n,ti);
 for i=1:ti
 Mhr(:,:,i)=vectomat(cfdtdhr(:,i),n,n); % convert to matrix form
 
-    for ii=x0:x1 %This shows the building
-        for jj=y0:y1
-        Mhr(ii,jj,i)=.01; 
-        end
-    end
+%     for ii=x0:x1 %This shows the building
+%         for jj=y0:y1
+%         Mhr(ii,jj,i)=.01; 
+%         end
+%     end
 
 end
 
@@ -120,12 +119,11 @@ end
 
 %movie(F,1,2)
 jj=1;
-for i=1:6:ti
+for i=1:3:ti
 
 surf((1:n),(1:n),Mhr(:,:,i))
-
-view(-28, 66)
 %axis([0 10 0 10 -.05 .05])
+axis([0 n 0 n -.1 .1])
 G(jj)=getframe(1,[38,30,473,373]);
 jj=jj+1;
 end
@@ -135,13 +133,12 @@ figure
 point=11.5*n;
 rmodel=cfdtdhr(point,:);
 fmodel=cfdtd(point,:);
-plot(1:ti,fmodel,'b')
+plot(1:ti,fmodel,'k','LineWidth',2)
 axis([0 500 -10e-3 13e-3])
 hold on
-plot( 1:ti,rmodel,'r:')
+plot( 1:ti,rmodel,'r:','LineWidth',2)
+plot( 1:ti,fmodel-rmodel,'b')
 xlabel('time steps')
 ylabel('Pressure')
 grid on
-legend( 'FDTD',['r=',num2str(redstep),', Arnoldi'])
-
-plot(squeeze(M(12,21,:)))
+legend( 'FDTD',['r=',num2str(redstep),', Arnoldi'],'Error')

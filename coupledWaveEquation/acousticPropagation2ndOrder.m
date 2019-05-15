@@ -6,14 +6,14 @@
 %
 % where $p$ represents pressure and $K = \rho c^2$, where $\rho$ is the
 % uniform density and $c$ is the speed of sound in the medium.
-% In this version we will avoid state space and instead interpolate via
-% Galerkin projection.
+% In this version we will interpolate the second order system directly via
+% Galerkin projection, optimized using second order IRKA.
  
 %% Semi-discretization
 % In order to perform model reduction, we first want to develop a model for
 % our system which looks like:
 % 
-% $$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = \mathbf{B u}(t) $$
+% $$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{p}} + \mathbf{ K p} = \mathbf{B u}(t) $$
 %  
 % We start by semi-discretizing the wave equation in space; this transforms
 % the laplacian, which contains spacial first derivatives, into a
@@ -24,15 +24,15 @@
 % 
 % <matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser') Laplacian Finite Difference Wikipedia>
 % 
-% This transforms the wave equation from a 2nd order PDE into m*n 2nd order
-% coupled ODEs, where the xy grid size is m by n. The laplacian is turned
+% This transforms the wave equation from a 2nd order PDE into n 2nd order
+% coupled ODEs, where n=xdim*ydim, and the xy grid size is xdim by ydim. The laplacian is turned
 % into the coefficient matrix $\mathbf{K}$, which can be deduced from the
 % discretization shown above.
 % 
-%% Formulating the system matrices $\mathbf{K}$ and $\mathbf{B}$
+%% Formulating the system matrices $\mathbf{K}$, $\mathbf{D}$, and $\mathbf{B}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-animate=0; %Set to 0 to save time when doing comments
+animate=1; %Set to 0 to save time when doing comments
 
 rho=1.2; c=345;
 % rho=-1; c=1;
@@ -49,27 +49,26 @@ row=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, ydim-2) 1/dx^2 zeros(1,n-(ydim+1))];
 K=-rho * c^2 * toeplitz(row);
 
 %%
-% Set boundary element contributions to zero (artifact from making pressure
-% matrix into a vector for state) (zero gives Dirichlet aka mirror BC).
+% Set boundary element contributions to zero on the off diagonal(artifact 
+% from making pressure matrix into a vector for state) (zero gives Dirichlet
+% aka mirror BC).
 for i = 1:xdim-1 
     K(i*xdim+1,i*xdim)=0;
     K(i*xdim,i*xdim+1)=0;
 end
 
-%plot(svd(K))
-
 %%
-% We also can define a damping matrix D. Here we do proportional damping.
+% We can also define a damping matrix $\mathbf{D}$. Here we do proportional damping.
 
-Alpha = 0.00003;
+Alpha = 0;
 D = Alpha*K;
 
 %%
 % We also define our initial condition $\mathbf{B=p0}$, where
 % $\mathbf{u}(t)$ is an impulse.
 
-xx=1:1:xdim;
-yy=1:1:xdim;
+xx=1:xdim;
+yy=1:xdim;
 parab_x0=20;
 parab_y0=parab_x0;
 %choose parabHeight = height of parabola
@@ -78,19 +77,26 @@ parabHeight=.05;
 parabRadius=10; % how many grid space for the radius of the parabola
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
-ff=zeros(xdim);
+p0=zeros(xdim);
 for i=1:xdim
     for j=1:xdim
         if -alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight >= 0
-        ff(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight; 
+        p0(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight; 
         end
     end
 end
-B=ff(:);
+B=p0(:);
 
 %% Solve the full model using ODE45 as a baseline
-% Form the full A matrix and integrate using ODE45
+% As a baseline model, we solve the full system with ODE45. In order to do
+% so, we convert to 2n first order systems by defining our state vector
 % 
+% $$ \mathbf{x}(t) = \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} = \pmatrix{\mathbf{p} \cr \mathbf{\dot{p}}}$$
+% 
+% and forming the coefficient matrix $\mathbf{A}$ for the state space system
+% 
+% $$ \pmatrix{\mathbf{\dot{x}}_1 \cr \mathbf{\dot{x}}_2} = \pmatrix{\mathbf{0} & \mathbf{I} \cr -\mathbf{K} & -\mathbf{D}} \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} $$
+%
 
 A=[zeros(xdim^2) eye(xdim^2);
     -K -D];
@@ -100,21 +106,21 @@ x0(1:n)=B;
 
 tf=0.05;
 ti=500;
-tspan = linspace(0,tf,ti); %[0 tf]
+tspan = linspace(0,tf,ti);
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
-
 
 %% Form Galerkin reduction basis $\mathbf{V_r}$
 % We form reduction basis $\mathbf{V_r}$ for the system, given by an
 % orthonormal basis for the space spanned by the vectors 
 %
-% $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
+% $\mathbf{V_i} = (s_i^2 \mathbf{I} + s_i \mathbf{D} + \mathbf{K})^{-1} \mathbf{B}$
 %
 
-r=15^2;
-irkaIters=1;
+r=5^2;
+irkaIters= 25;
+tol = .1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
 %si(1,:)=linspace(10,10^5,r);
@@ -122,40 +128,47 @@ I = eye(n);
 Vi=zeros(irkaIters,n,r);
 Vr=zeros(irkaIters,n,r);
 
+%%
+% We implement IRKA for the second order system to allow the sampling
+% points to converge
 for j=1:irkaIters
     for i=1:r
         Vi(j,:,i)=(si(j,i)^2*I+si(j,i)*D+K)\B;
     end
-    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); % ,'econ'); %or use SVD? because orth uses SVD
-    si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    %%
+    % We use QR decomposition to obtain our orthogonal basis in case $\mathbf{V_i}$ is
+    % rank defficient. This ensures that $\mathbf{V_r^T V_r = I}$.
+    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0);
+    
+    % The updated interpolation points are the reduced order poles, given by polyeig 
+    reducedEigs = polyeig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:)),squeeze(Vr(j,:,:))'*D*squeeze(Vr(j,:,:)),eye(r))'; %sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    si(j+1,:) = -imag(reducedEigs(2:2:end));
+    
+    if min(abs(si(j+1,:) - si(j,:))) < tol 
+        endJ=j;
+        break % If IRKA converges
+    end
 end
-
 % figure
 % loglog(si, abs(Vi(1,:)))
-
-%%
-% Rather than using Matlab's orth command, we use svd in case $\mathbf{V_i}$ is
-% considered rank defficient. Orth calls svd according to Matlab
-% documentation, so this just ensures that $\mathbf{V_i}$ has the correct dimensions
-% and that $\mathbf{V_r^T V_r = I}$
-
 
 %% Solve the reduced model using ODE45
 % Set up the reduced system matrices using Galerkin projection
 %
 % $$ \mathbf{Kr = V_r^T K V_r} $$
 %
+% $$ \mathbf{Dr = V_r^T D V_r} $$
+%
 % $$ \mathbf{Br = V_r^T B} $$
-% 
-figure
-hold on
-for j=1:irkaIters
+%
+% and solve using ODE45 as before.
+for j=1:endJ
     rEffec=r;
     VrEffec=squeeze(Vr(j,:,:));
     
     Kr=VrEffec'*K*VrEffec;
-    Br=VrEffec'*B;
     Dr=VrEffec'*D*VrEffec;
+    Br=VrEffec'*B;
     
     Ar=[zeros(rEffec) eye(rEffec);
        -Kr -Dr];
@@ -167,42 +180,48 @@ for j=1:irkaIters
 
     % Project back to full space
     reducedP=(VrEffec*xr(:,1:rEffec)')';
-
-    errorP(j,:,:)=fullP-reducedP;
-    plot(errorP(j,:,625))
 end
-%% Plot error for particular node
-%
-plot(reducedP(:,625))
-plot(fullP(:,625))
-legend('E','R','F');
 
 %% Plot the animations
 %
-
 if animate  
-    figure
-    for k = 1:ti
-        surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));
-        axis([0 ydim 0 xdim -.1 .1])
-        drawnow;
-        errorFrames(k) = getframe;
-    end
-    
-    for k = 1:ti
+%     for k = 1:3:ti
+%         surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));
+%         axis([0 ydim 0 xdim -.1 .1])
+%         drawnow;
+%         errorFrames(k) = getframe;
+%     end
+
+    for k = 1:3:ti
         surf(vectomat(fullP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mframes(k) = getframe;
     end
 
-    for k = 1:ti
+    for k = 1:3:ti
         surf(vectomat(reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mrframes(k) = getframe;
     end
 end
+
+%% Time plot comparisons
+% 
+figure
+point=11.5*xdim;
+rmodel=reducedP(:,point);
+fmodel=fullP(:,point);
+plot(1:ti,fmodel,'k','LineWidth',2)
+axis([0 500 -10e-3 13e-3])
+hold on
+plot( 1:ti,rmodel,'r:','LineWidth',2)
+plot( 1:ti,fmodel-rmodel,'b')
+xlabel('time steps')
+ylabel('Pressure')
+grid on
+legend( 'Wave Equation',['r=',num2str(r),', IRKA'],'Error')
 
 function dp = myfun(t,p,A)
 dp=A*p;

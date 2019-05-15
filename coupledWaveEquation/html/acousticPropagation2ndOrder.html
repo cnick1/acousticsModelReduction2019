@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Acoustic Wave Propagation using Wave Equation</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-05-14"><meta name="DC.source" content="acousticPropagation2ndOrder.m"><style type="text/css">
+      --><title>Acoustic Wave Propagation using Wave Equation</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-05-15"><meta name="DC.source" content="acousticPropagation2ndOrder.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -66,8 +66,8 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Acoustic Wave Propagation using Wave Equation</h1><!--introduction--><p>Model generation and reduction of acoustic wave propogation using the wave equation, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14091693394908288131.png" alt="$$ \ddot{p}=K \nabla^2 p $$" style="width:66px;height:16px;"></p><p>where <img src="acousticPropagation2ndOrder_eq09941021013676836398.png" alt="$p$" style="width:8px;height:10px;"> represents pressure and <img src="acousticPropagation2ndOrder_eq08789044426487688891.png" alt="$K = \rho c^2$" style="width:51px;height:16px;">, where <img src="acousticPropagation2ndOrder_eq11905270608999804013.png" alt="$\rho$" style="width:7px;height:10px;"> is the uniform density and <img src="acousticPropagation2ndOrder_eq08422257486649890878.png" alt="$c$" style="width:6px;height:7px;"> is the speed of sound in the medium. In this version we will avoid state space and instead interpolate via Galerkin projection.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Semi-discretization</a></li><li><a href="#2">Formulating the system matrices <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;"> and <img src="acousticPropagation2ndOrder_eq09421698273818199295.png" alt="$\mathbf{B}$" style="width:11px;height:11px;"></a></li><li><a href="#6">Solve the full model using ODE45 as a baseline</a></li><li><a href="#7">Form Galerkin reduction basis <img src="acousticPropagation2ndOrder_eq08606458514954072049.png" alt="$\mathbf{V_r}$" style="width:17px;height:13px;"></a></li><li><a href="#9">Solve the reduced model using ODE45</a></li><li><a href="#10">Plot error for particular node</a></li><li><a href="#11">Plot the animations</a></li></ul></div><h2 id="1">Semi-discretization</h2><p>In order to perform model reduction, we first want to develop a model for our system which looks like:</p><p><img src="acousticPropagation2ndOrder_eq04294991834503162306.png" alt="$$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = \mathbf{B u}(t) $$" style="width:162px;height:15px;"></p><p>We start by semi-discretizing the wave equation in space; this transforms the laplacian, which contains spacial first derivatives, into a collection of finite differences, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14385902810203721257.png" alt="$$ \nabla^2 p(i,j) = \frac{p(i+1,j)-2 p(i,j)+p(i-1,j)}{(\Delta x)^2} +&#xA;\frac{p(i,j+1)-2 p(i,j)+p(i,j-1)}{(\Delta y)^2} $$" style="width:509px;height:35px;"></p><p><a href="matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser')">Laplacian Finite Difference Wikipedia</a></p><p>This transforms the wave equation from a 2nd order PDE into m*n 2nd order coupled ODEs, where the xy grid size is m by n. The laplacian is turned into the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, which can be deduced from the discretization shown above.</p><h2 id="2">Formulating the system matrices <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;"> and <img src="acousticPropagation2ndOrder_eq09421698273818199295.png" alt="$\mathbf{B}$" style="width:11px;height:11px;"></h2><p>Define grid size and spacing (square for now)</p><pre class="codeinput">clear; close <span class="string">all</span>; clc;
-animate=0; <span class="comment">%Set to 0 to save time when doing comments</span>
+  </style></head><body><div class="content"><h1>Acoustic Wave Propagation using Wave Equation</h1><!--introduction--><p>Model generation and reduction of acoustic wave propogation using the wave equation, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14091693394908288131.png" alt="$$ \ddot{p}=K \nabla^2 p $$" style="width:66px;height:16px;"></p><p>where <img src="acousticPropagation2ndOrder_eq09941021013676836398.png" alt="$p$" style="width:8px;height:10px;"> represents pressure and <img src="acousticPropagation2ndOrder_eq08789044426487688891.png" alt="$K = \rho c^2$" style="width:51px;height:16px;">, where <img src="acousticPropagation2ndOrder_eq11905270608999804013.png" alt="$\rho$" style="width:7px;height:10px;"> is the uniform density and <img src="acousticPropagation2ndOrder_eq08422257486649890878.png" alt="$c$" style="width:6px;height:7px;"> is the speed of sound in the medium. In this version we will interpolate the second order system directly via Galerkin projection, optimized using second order IRKA.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Semi-discretization</a></li><li><a href="#2">Formulating the system matrices <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, <img src="acousticPropagation2ndOrder_eq07812796122435096599.png" alt="$\mathbf{D}$" style="width:12px;height:11px;">, and <img src="acousticPropagation2ndOrder_eq09421698273818199295.png" alt="$\mathbf{B}$" style="width:11px;height:11px;"></a></li><li><a href="#7">Solve the full model using ODE45 as a baseline</a></li><li><a href="#8">Form Galerkin reduction basis <img src="acousticPropagation2ndOrder_eq08606458514954072049.png" alt="$\mathbf{V_r}$" style="width:17px;height:13px;"></a></li><li><a href="#13">Solve the reduced model using ODE45</a></li><li><a href="#14">Plot the animations</a></li><li><a href="#15">Time plot comparisons</a></li></ul></div><h2 id="1">Semi-discretization</h2><p>In order to perform model reduction, we first want to develop a model for our system which looks like:</p><p><img src="acousticPropagation2ndOrder_eq05921378128730367933.png" alt="$$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{p}} + \mathbf{ K p} = \mathbf{B u}(t) $$" style="width:163px;height:15px;"></p><p>We start by semi-discretizing the wave equation in space; this transforms the laplacian, which contains spacial first derivatives, into a collection of finite differences, i.e.</p><p><img src="acousticPropagation2ndOrder_eq14385902810203721257.png" alt="$$ \nabla^2 p(i,j) = \frac{p(i+1,j)-2 p(i,j)+p(i-1,j)}{(\Delta x)^2} +&#xA;\frac{p(i,j+1)-2 p(i,j)+p(i,j-1)}{(\Delta y)^2} $$" style="width:509px;height:35px;"></p><p><a href="matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser')">Laplacian Finite Difference Wikipedia</a></p><p>This transforms the wave equation from a 2nd order PDE into n 2nd order coupled ODEs, where n=xdim*ydim, and the xy grid size is xdim by ydim. The laplacian is turned into the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, which can be deduced from the discretization shown above.</p><h2 id="2">Formulating the system matrices <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, <img src="acousticPropagation2ndOrder_eq07812796122435096599.png" alt="$\mathbf{D}$" style="width:12px;height:11px;">, and <img src="acousticPropagation2ndOrder_eq09421698273818199295.png" alt="$\mathbf{B}$" style="width:11px;height:11px;"></h2><p>Define grid size and spacing (square for now)</p><pre class="codeinput">clear; close <span class="string">all</span>; clc;
+animate=1; <span class="comment">%Set to 0 to save time when doing comments</span>
 
 rho=1.2; c=345;
 <span class="comment">% rho=-1; c=1;</span>
@@ -77,14 +77,14 @@ dx=.25; dy=dx;
 n=xdim*ydim;
 </pre><p>Populate the coefficient matrix <img src="acousticPropagation2ndOrder_eq07811037313980141141.png" alt="$\mathbf{K}$" style="width:13px;height:11px;">, i.e. the discretized laplacian operator. It has an almost toeplitz form, with some extra zeros on the off diagonal for boundary element conditions.</p><pre class="codeinput">row=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, ydim-2) 1/dx^2 zeros(1,n-(ydim+1))];
 K=-rho * c^2 * toeplitz(row);
-</pre><p>Set boundary element contributions to zero (artifact from making pressure matrix into a vector for state) (zero gives Dirichlet aka mirror BC).</p><pre class="codeinput"><span class="keyword">for</span> i = 1:xdim-1
+</pre><p>Set boundary element contributions to zero on the off diagonal(artifact from making pressure matrix into a vector for state) (zero gives Dirichlet aka mirror BC).</p><pre class="codeinput"><span class="keyword">for</span> i = 1:xdim-1
     K(i*xdim+1,i*xdim)=0;
     K(i*xdim,i*xdim+1)=0;
 <span class="keyword">end</span>
-
-<span class="comment">%plot(svd(K))</span>
-</pre><p>We also define our initial condition <img src="acousticPropagation2ndOrder_eq03890631049039107270.png" alt="$\mathbf{B=p0}$" style="width:49px;height:13px;">, where <img src="acousticPropagation2ndOrder_eq06539299073207981811.png" alt="$\mathbf{u}(t)$" style="width:25px;height:15px;"> is an impulse.</p><pre class="codeinput">xx=1:1:xdim;
-yy=1:1:xdim;
+</pre><p>We can also define a damping matrix <img src="acousticPropagation2ndOrder_eq07812796122435096599.png" alt="$\mathbf{D}$" style="width:12px;height:11px;">. Here we do proportional damping.</p><pre class="codeinput">Alpha = 0;
+D = Alpha*K;
+</pre><p>We also define our initial condition <img src="acousticPropagation2ndOrder_eq03890631049039107270.png" alt="$\mathbf{B=p0}$" style="width:49px;height:13px;">, where <img src="acousticPropagation2ndOrder_eq06539299073207981811.png" alt="$\mathbf{u}(t)$" style="width:25px;height:15px;"> is an impulse.</p><pre class="codeinput">xx=1:xdim;
+yy=1:xdim;
 parab_x0=20;
 parab_y0=parab_x0;
 <span class="comment">%choose parabHeight = height of parabola</span>
@@ -93,97 +93,112 @@ parabHeight=.05;
 parabRadius=10; <span class="comment">% how many grid space for the radius of the parabola</span>
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
-ff=zeros(xdim);
+p0=zeros(xdim);
 <span class="keyword">for</span> i=1:xdim
     <span class="keyword">for</span> j=1:xdim
         <span class="keyword">if</span> -alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight &gt;= 0
-        ff(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight;
+        p0(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight;
         <span class="keyword">end</span>
     <span class="keyword">end</span>
 <span class="keyword">end</span>
-B=ff(:);
-</pre><h2 id="6">Solve the full model using ODE45 as a baseline</h2><p>Form the full A matrix and integrate using ODE45</p><pre class="codeinput">A=[zeros(xdim^2) eye(xdim^2);
-    -K zeros(xdim^2)];
+B=p0(:);
+</pre><h2 id="7">Solve the full model using ODE45 as a baseline</h2><p>As a baseline model, we solve the full system with ODE45. In order to do so, we convert to 2n first order systems by defining our state vector</p><p><img src="acousticPropagation2ndOrder_eq09101860723307899311.png" alt="$$ \mathbf{x}(t) = \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} = \pmatrix{\mathbf{p} \cr \mathbf{\dot{p}}}$$" style="width:139px;height:35px;"></p><p>and forming the coefficient matrix <img src="acousticPropagation2ndOrder_eq04088523938794390934.png" alt="$\mathbf{A}$" style="width:12px;height:11px;"> for the state space system</p><p><img src="acousticPropagation2ndOrder_eq08460818863476144255.png" alt="$$ \pmatrix{\mathbf{\dot{x}}_1 \cr \mathbf{\dot{x}}_2} = \pmatrix{\mathbf{0} &amp; \mathbf{I} \cr -\mathbf{K} &amp; -\mathbf{D}} \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} $$" style="width:189px;height:35px;"></p><pre class="codeinput">A=[zeros(xdim^2) eye(xdim^2);
+    -K -D];
 
 x0=zeros(1,2*n);
 x0(1:n)=B;
 
 tf=0.05;
-tspan = linspace(0,tf,500); <span class="comment">%[0 tf]</span>
+ti=500;
+tspan = linspace(0,tf,ti);
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
-</pre><h2 id="7">Form Galerkin reduction basis <img src="acousticPropagation2ndOrder_eq08606458514954072049.png" alt="$\mathbf{V_r}$" style="width:17px;height:13px;"></h2><p>We form reduction basis <img src="acousticPropagation2ndOrder_eq08606458514954072049.png" alt="$\mathbf{V_r}$" style="width:17px;height:13px;"> for the system, given by an orthonormal basis for the space spanned by the vectors</p><p><img src="acousticPropagation2ndOrder_eq03469127483977362087.png" alt="$\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$" style="width:123px;height:17px;"></p><pre class="codeinput">r=16^2;
-irkaIters=1;
+</pre><h2 id="8">Form Galerkin reduction basis <img src="acousticPropagation2ndOrder_eq08606458514954072049.png" alt="$\mathbf{V_r}$" style="width:17px;height:13px;"></h2><p>We form reduction basis <img src="acousticPropagation2ndOrder_eq08606458514954072049.png" alt="$\mathbf{V_r}$" style="width:17px;height:13px;"> for the system, given by an orthonormal basis for the space spanned by the vectors</p><p><img src="acousticPropagation2ndOrder_eq09408370827124065708.png" alt="$\mathbf{V_i} = (s_i^2 \mathbf{I} + s_i \mathbf{D} + \mathbf{K})^{-1} \mathbf{B}$" style="width:165px;height:17px;"></p><pre class="codeinput">r=5^2;
+irkaIters= 25;
+tol = .1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
+<span class="comment">%si(1,:)=linspace(10,10^5,r);</span>
 I = eye(n);
 Vi=zeros(irkaIters,n,r);
 Vr=zeros(irkaIters,n,r);
-
-<span class="keyword">for</span> j=1:irkaIters
-    <span class="keyword">for</span> i=1:r
-        Vi(j,:,i)=(si(j,i)^2*I+K)\B;
+</pre><p>We implement IRKA for the second order system to allow the sampling points to converge</p><pre class="codeinput"><span class="keyword">for</span> j=1:irkaIters
+</pre><pre class="codeinput">    <span class="keyword">for</span> i=1:r
+        Vi(j,:,i)=(si(j,i)^2*I+si(j,i)*D+K)\B;
     <span class="keyword">end</span>
-    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); <span class="comment">% ,'econ'); %or use SVD? because orth uses SVD</span>
-    si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
-<span class="keyword">end</span>
+</pre><p>We use QR decomposition to obtain our orthogonal basis in case <img src="acousticPropagation2ndOrder_eq08880071661988376885.png" alt="$\mathbf{V_i}$" style="width:15px;height:13px;"> is rank defficient. This ensures that <img src="acousticPropagation2ndOrder_eq05043293217858085731.png" alt="$\mathbf{V_r^T V_r = I}$" style="width:65px;height:17px;">.</p><pre class="codeinput">    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0);
 
+    <span class="comment">% The updated interpolation points are the reduced order poles, given by polyeig</span>
+    reducedEigs = polyeig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:)),squeeze(Vr(j,:,:))'*D*squeeze(Vr(j,:,:)),eye(r))'; <span class="comment">%sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));</span>
+    si(j+1,:) = -imag(reducedEigs(2:2:end));
+
+    <span class="keyword">if</span> min(abs(si(j+1,:) - si(j,:))) &lt; tol
+        endJ=j;
+        <span class="keyword">break</span> <span class="comment">% If IRKA converges</span>
+    <span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
 <span class="comment">% figure</span>
 <span class="comment">% loglog(si, abs(Vi(1,:)))</span>
-</pre><p>Rather than using Matlab's orth command, we use svd in case <img src="acousticPropagation2ndOrder_eq08880071661988376885.png" alt="$\mathbf{V_i}$" style="width:15px;height:13px;"> is considered rank defficient. Orth calls svd according to Matlab documentation, so this just ensures that <img src="acousticPropagation2ndOrder_eq08880071661988376885.png" alt="$\mathbf{V_i}$" style="width:15px;height:13px;"> has the correct dimensions and that <img src="acousticPropagation2ndOrder_eq05043293217858085731.png" alt="$\mathbf{V_r^T V_r = I}$" style="width:65px;height:17px;"></p><h2 id="9">Solve the reduced model using ODE45</h2><p>Set up the reduced system matrices using Galerkin projection</p><p><img src="acousticPropagation2ndOrder_eq01564267708813529969.png" alt="$$ \mathbf{Kr = V_r^T K V_r} $$" style="width:92px;height:17px;"></p><p><img src="acousticPropagation2ndOrder_eq08921944335530497577.png" alt="$$ \mathbf{Br = V_r^T B} $$" style="width:72px;height:17px;"></p><pre class="codeinput">figure
-hold <span class="string">on</span>
-<span class="keyword">for</span> iter=1:irkaIters
-    Kr=squeeze(Vr(iter,:,:))'*K*squeeze(Vr(iter,:,:));
-    Br=squeeze(Vr(iter,:,:))'*B;
+</pre><h2 id="13">Solve the reduced model using ODE45</h2><p>Set up the reduced system matrices using Galerkin projection</p><p><img src="acousticPropagation2ndOrder_eq01564267708813529969.png" alt="$$ \mathbf{Kr = V_r^T K V_r} $$" style="width:92px;height:17px;"></p><p><img src="acousticPropagation2ndOrder_eq13410925999197858484.png" alt="$$ \mathbf{Dr = V_r^T D V_r} $$" style="width:91px;height:17px;"></p><p><img src="acousticPropagation2ndOrder_eq08921944335530497577.png" alt="$$ \mathbf{Br = V_r^T B} $$" style="width:72px;height:17px;"></p><p>and solve using ODE45 as before.</p><pre class="codeinput"><span class="keyword">for</span> j=1:endJ
+    rEffec=r;
+    VrEffec=squeeze(Vr(j,:,:));
 
-    Ar=[zeros(r) eye(r);
-       -Kr zeros(r)];
+    Kr=VrEffec'*K*VrEffec;
+    Dr=VrEffec'*D*VrEffec;
+    Br=VrEffec'*B;
 
-    xr0=zeros(1,2*r);
-    xr0(1:r)=Br;
+    Ar=[zeros(rEffec) eye(rEffec);
+       -Kr -Dr];
+
+    xr0=zeros(1,2*rEffec);
+    xr0(1:rEffec)=Br;
 
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     <span class="comment">% Project back to full space</span>
-    reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
-
-    <span class="comment">% Interpolate reducedP to match the dimension of fullP</span>
-    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
-
-    errorP(iter,:,:)=fullP-reducedPinterp;
-    plot(errorP(iter,:,625))
+    reducedP=(VrEffec*xr(:,1:rEffec)')';
 <span class="keyword">end</span>
-</pre><img vspace="5" hspace="5" src="acousticPropagation2ndOrder_01.png" alt=""> <h2 id="10">Plot error for particular node</h2><pre class="codeinput">plot(reducedPinterp(:,625))
-plot(fullP(:,625))
-</pre><img vspace="5" hspace="5" src="acousticPropagation2ndOrder_02.png" alt=""> <h2 id="11">Plot the animations</h2><pre class="codeinput"><span class="keyword">if</span> animate
-    figure
-    <span class="keyword">for</span> k = 1:size(fullP,1)
-        surf(vectomat(fullP(k,:)-reducedPinterp(k,:),ydim,xdim));
-        axis([0 ydim 0 xdim -.1 .1])
-        drawnow;
-        errorFrames(k) = getframe;
-    <span class="keyword">end</span>
+</pre><h2 id="14">Plot the animations</h2><pre class="codeinput"><span class="keyword">if</span> animate
+<span class="comment">%     for k = 1:3:ti</span>
+<span class="comment">%         surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));</span>
+<span class="comment">%         axis([0 ydim 0 xdim -.1 .1])</span>
+<span class="comment">%         drawnow;</span>
+<span class="comment">%         errorFrames(k) = getframe;</span>
+<span class="comment">%     end</span>
 
-    <span class="keyword">for</span> k = 1:size(fullP,1)
+    <span class="keyword">for</span> k = 1:3:ti
         surf(vectomat(fullP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mframes(k) = getframe;
     <span class="keyword">end</span>
 
-    <span class="keyword">for</span> k = 1:size(reducedPinterp, 1)
-        surf(vectomat(reducedPinterp(k,:),ydim,xdim));
+    <span class="keyword">for</span> k = 1:3:ti
+        surf(vectomat(reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mrframes(k) = getframe;
     <span class="keyword">end</span>
 <span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="acousticPropagation2ndOrder_01.png" alt=""> <h2 id="15">Time plot comparisons</h2><pre class="codeinput">figure
+point=11.5*xdim;
+rmodel=reducedP(:,point);
+fmodel=fullP(:,point);
+plot(1:ti,fmodel,<span class="string">'k'</span>,<span class="string">'LineWidth'</span>,2)
+axis([0 500 -10e-3 13e-3])
+hold <span class="string">on</span>
+plot( 1:ti,rmodel,<span class="string">'r:'</span>,<span class="string">'LineWidth'</span>,2)
+plot( 1:ti,fmodel-rmodel,<span class="string">'b'</span>)
+xlabel(<span class="string">'time steps'</span>)
+ylabel(<span class="string">'Pressure'</span>)
+grid <span class="string">on</span>
+legend( <span class="string">'Wave Equation'</span>,[<span class="string">'r='</span>,num2str(r),<span class="string">', IRKA'</span>],<span class="string">'Error'</span>)
 
 <span class="keyword">function</span> dp = myfun(t,p,A)
 dp=A*p;
 <span class="keyword">end</span>
-</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
+</pre><img vspace="5" hspace="5" src="acousticPropagation2ndOrder_02.png" alt=""> <p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Acoustic Wave Propagation using Wave Equation
 % Model generation and reduction of acoustic wave propogation using the wave
@@ -193,14 +208,14 @@ dp=A*p;
 %
 % where $p$ represents pressure and $K = \rho c^2$, where $\rho$ is the
 % uniform density and $c$ is the speed of sound in the medium.
-% In this version we will avoid state space and instead interpolate via
-% Galerkin projection.
+% In this version we will interpolate the second order system directly via
+% Galerkin projection, optimized using second order IRKA.
  
 %% Semi-discretization
 % In order to perform model reduction, we first want to develop a model for
 % our system which looks like:
 % 
-% $$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{x}} + \mathbf{ K p} = \mathbf{B u}(t) $$
+% $$ \mathbf{M \ddot{p}} + \mathbf{ D \dot{p}} + \mathbf{ K p} = \mathbf{B u}(t) $$
 %  
 % We start by semi-discretizing the wave equation in space; this transforms
 % the laplacian, which contains spacial first derivatives, into a
@@ -211,15 +226,15 @@ dp=A*p;
 % 
 % <matlab:web('https://en.wikipedia.org/wiki/Finite_difference_method#Example:_The_Laplace_operator','-browser') Laplacian Finite Difference Wikipedia>
 % 
-% This transforms the wave equation from a 2nd order PDE into m*n 2nd order
-% coupled ODEs, where the xy grid size is m by n. The laplacian is turned
+% This transforms the wave equation from a 2nd order PDE into n 2nd order
+% coupled ODEs, where n=xdim*ydim, and the xy grid size is xdim by ydim. The laplacian is turned
 % into the coefficient matrix $\mathbf{K}$, which can be deduced from the
 % discretization shown above.
 % 
-%% Formulating the system matrices $\mathbf{K}$ and $\mathbf{B}$
+%% Formulating the system matrices $\mathbf{K}$, $\mathbf{D}$, and $\mathbf{B}$
 % Define grid size and spacing (square for now)
 clear; close all; clc;
-animate=0; %Set to 0 to save time when doing comments
+animate=1; %Set to 0 to save time when doing comments
 
 rho=1.2; c=345;
 % rho=-1; c=1;
@@ -236,21 +251,26 @@ row=[-2/dx^2-2/dy^2 1/dy^2 zeros(1, ydim-2) 1/dx^2 zeros(1,n-(ydim+1))];
 K=-rho * c^2 * toeplitz(row);
 
 %%
-% Set boundary element contributions to zero (artifact from making pressure
-% matrix into a vector for state) (zero gives Dirichlet aka mirror BC).
+% Set boundary element contributions to zero on the off diagonal(artifact 
+% from making pressure matrix into a vector for state) (zero gives Dirichlet
+% aka mirror BC).
 for i = 1:xdim-1 
     K(i*xdim+1,i*xdim)=0;
     K(i*xdim,i*xdim+1)=0;
 end
 
-%plot(svd(K))
+%%
+% We can also define a damping matrix $\mathbf{D}$. Here we do proportional damping.
+
+Alpha = 0;
+D = Alpha*K;
 
 %%
 % We also define our initial condition $\mathbf{B=p0}$, where
 % $\mathbf{u}(t)$ is an impulse.
 
-xx=1:1:xdim;
-yy=1:1:xdim;
+xx=1:xdim;
+yy=1:xdim;
 parab_x0=20;
 parab_y0=parab_x0;
 %choose parabHeight = height of parabola
@@ -259,126 +279,151 @@ parabHeight=.05;
 parabRadius=10; % how many grid space for the radius of the parabola
 beta=parabHeight/(parabRadius*dy)^2;
 alfa=beta;
-ff=zeros(xdim);
+p0=zeros(xdim);
 for i=1:xdim
     for j=1:xdim
         if -alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight >= 0
-        ff(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight; 
+        p0(i,j)=-alfa*(xx(i) -parab_x0)^2-beta*(yy(j)-parab_y0)^2+parabHeight; 
         end
     end
 end
-B=ff(:);
+B=p0(:);
 
 %% Solve the full model using ODE45 as a baseline
-% Form the full A matrix and integrate using ODE45
+% As a baseline model, we solve the full system with ODE45. In order to do
+% so, we convert to 2n first order systems by defining our state vector
 % 
+% $$ \mathbf{x}(t) = \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} = \pmatrix{\mathbf{p} \cr \mathbf{\dot{p}}}$$
+% 
+% and forming the coefficient matrix $\mathbf{A}$ for the state space system
+% 
+% $$ \pmatrix{\mathbf{\dot{x}}_1 \cr \mathbf{\dot{x}}_2} = \pmatrix{\mathbf{0} & \mathbf{I} \cr -\mathbf{K} & -\mathbf{D}} \pmatrix{\mathbf{x}_1 \cr \mathbf{x}_2} $$
+%
 
 A=[zeros(xdim^2) eye(xdim^2);
-    -K zeros(xdim^2)];
+    -K -D];
 
 x0=zeros(1,2*n);
 x0(1:n)=B;
 
 tf=0.05;
-tspan = linspace(0,tf,500); %[0 tf]
+ti=500;
+tspan = linspace(0,tf,ti);
 [t, x] = ode45(@(t,p) myfun(t,p,A), tspan, x0);
 
 fullP=x(:,1:n);
-
 
 %% Form Galerkin reduction basis $\mathbf{V_r}$
 % We form reduction basis $\mathbf{V_r}$ for the system, given by an
 % orthonormal basis for the space spanned by the vectors 
 %
-% $\mathbf{V_i} = (s_i^2 \mathbf{I + K})^{-1} \mathbf{B}$
+% $\mathbf{V_i} = (s_i^2 \mathbf{I} + s_i \mathbf{D} + \mathbf{K})^{-1} \mathbf{B}$
 %
 
-r=16^2;
-irkaIters=1;
+r=5^2;
+irkaIters= 25;
+tol = .1;
 si=zeros(irkaIters+1,r);
 si(1,:)=logspace(1,5,r);
+%si(1,:)=linspace(10,10^5,r);
 I = eye(n);
 Vi=zeros(irkaIters,n,r);
 Vr=zeros(irkaIters,n,r);
 
+%%
+% We implement IRKA for the second order system to allow the sampling
+% points to converge
 for j=1:irkaIters
     for i=1:r
-        Vi(j,:,i)=(si(j,i)^2*I+K)\B;
+        Vi(j,:,i)=(si(j,i)^2*I+si(j,i)*D+K)\B;
     end
-    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); % ,'econ'); %or use SVD? because orth uses SVD
-    si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    %%
+    % We use QR decomposition to obtain our orthogonal basis in case $\mathbf{V_i}$ is
+    % rank defficient. This ensures that $\mathbf{V_r^T V_r = I}$.
+    [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0);
+    
+    % The updated interpolation points are the reduced order poles, given by polyeig 
+    reducedEigs = polyeig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:)),squeeze(Vr(j,:,:))'*D*squeeze(Vr(j,:,:)),eye(r))'; %sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
+    si(j+1,:) = -imag(reducedEigs(2:2:end));
+    
+    if min(abs(si(j+1,:) - si(j,:))) < tol 
+        endJ=j;
+        break % If IRKA converges
+    end
 end
-
 % figure
 % loglog(si, abs(Vi(1,:)))
-
-%%
-% Rather than using Matlab's orth command, we use svd in case $\mathbf{V_i}$ is
-% considered rank defficient. Orth calls svd according to Matlab
-% documentation, so this just ensures that $\mathbf{V_i}$ has the correct dimensions
-% and that $\mathbf{V_r^T V_r = I}$
-
 
 %% Solve the reduced model using ODE45
 % Set up the reduced system matrices using Galerkin projection
 %
 % $$ \mathbf{Kr = V_r^T K V_r} $$
 %
+% $$ \mathbf{Dr = V_r^T D V_r} $$
+%
 % $$ \mathbf{Br = V_r^T B} $$
-% 
-figure
-hold on
-for iter=1:irkaIters
-    Kr=squeeze(Vr(iter,:,:))'*K*squeeze(Vr(iter,:,:));
-    Br=squeeze(Vr(iter,:,:))'*B;
+%
+% and solve using ODE45 as before.
+for j=1:endJ
+    rEffec=r;
+    VrEffec=squeeze(Vr(j,:,:));
+    
+    Kr=VrEffec'*K*VrEffec;
+    Dr=VrEffec'*D*VrEffec;
+    Br=VrEffec'*B;
+    
+    Ar=[zeros(rEffec) eye(rEffec);
+       -Kr -Dr];
 
-    Ar=[zeros(r) eye(r);
-       -Kr zeros(r)];
-
-    xr0=zeros(1,2*r);
-    xr0(1:r)=Br;
+    xr0=zeros(1,2*rEffec);
+    xr0(1:rEffec)=Br;
 
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     % Project back to full space
-    reducedP=(squeeze(Vr(iter,:,:))*xr(:,1:r)')';
-
-    % Interpolate reducedP to match the dimension of fullP
-    reducedPinterp=interp1(reducedP,linspace(1,size(reducedP,1),size(fullP,1)));
-
-    errorP(iter,:,:)=fullP-reducedPinterp;
-    plot(errorP(iter,:,625))
+    reducedP=(VrEffec*xr(:,1:rEffec)')';
 end
-%% Plot error for particular node
-%
-plot(reducedPinterp(:,625))
-plot(fullP(:,625))
+
 %% Plot the animations
 %
-
 if animate  
-    figure
-    for k = 1:size(fullP,1)
-        surf(vectomat(fullP(k,:)-reducedPinterp(k,:),ydim,xdim));
-        axis([0 ydim 0 xdim -.1 .1])
-        drawnow;
-        errorFrames(k) = getframe;
-    end
-    
-    for k = 1:size(fullP,1)
+%     for k = 1:3:ti
+%         surf(vectomat(fullP(k,:)-reducedP(k,:),ydim,xdim));
+%         axis([0 ydim 0 xdim -.1 .1])
+%         drawnow;
+%         errorFrames(k) = getframe;
+%     end
+
+    for k = 1:3:ti
         surf(vectomat(fullP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mframes(k) = getframe;
     end
 
-    for k = 1:size(reducedPinterp, 1)
-        surf(vectomat(reducedPinterp(k,:),ydim,xdim));
+    for k = 1:3:ti
+        surf(vectomat(reducedP(k,:),ydim,xdim));
         axis([0 ydim 0 xdim -.1 .1])
         drawnow;
         Mrframes(k) = getframe;
     end
 end
+
+%% Time plot comparisons
+% 
+figure
+point=11.5*xdim;
+rmodel=reducedP(:,point);
+fmodel=fullP(:,point);
+plot(1:ti,fmodel,'k','LineWidth',2)
+axis([0 500 -10e-3 13e-3])
+hold on
+plot( 1:ti,rmodel,'r:','LineWidth',2)
+plot( 1:ti,fmodel-rmodel,'b')
+xlabel('time steps')
+ylabel('Pressure')
+grid on
+legend( 'Wave Equation',['r=',num2str(r),', IRKA'],'Error')
 
 function dp = myfun(t,p,A)
 dp=A*p;
