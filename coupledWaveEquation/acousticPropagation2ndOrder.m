@@ -59,6 +59,12 @@ end
 %plot(svd(K))
 
 %%
+% We also can define a damping matrix D. Here we do proportional damping.
+
+Alpha = 0.00003;
+D = Alpha*K;
+
+%%
 % We also define our initial condition $\mathbf{B=p0}$, where
 % $\mathbf{u}(t)$ is an impulse.
 
@@ -87,7 +93,7 @@ B=ff(:);
 % 
 
 A=[zeros(xdim^2) eye(xdim^2);
-    -K zeros(xdim^2)];
+    -K -D];
 
 x0=zeros(1,2*n);
 x0(1:n)=B;
@@ -118,14 +124,12 @@ Vr=zeros(irkaIters,n,r);
 
 for j=1:irkaIters
     for i=1:r
-        Vi(j,:,i)=(si(j,i)^2*I+K)\B;
+        Vi(j,:,i)=(si(j,i)^2*I+si(j,i)*D+K)\B;
     end
     [Vr(j,:,:),~] = qr(squeeze(Vi(j,:,:)), 0); % ,'econ'); %or use SVD? because orth uses SVD
     si(j+1,:) = sqrt(eig(squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:))));
 end
 
-rEffec=rank(squeeze(Vi));
-VrEffec=squeeze(Vr(j,:,1:rEffec));
 % figure
 % loglog(si, abs(Vi(1,:)))
 
@@ -146,19 +150,23 @@ VrEffec=squeeze(Vr(j,:,1:rEffec));
 figure
 hold on
 for j=1:irkaIters
-    Kr=squeeze(Vr(j,:,:))'*K*squeeze(Vr(j,:,:));
-    Br=squeeze(Vr(j,:,:))'*B;
+    rEffec=r;
+    VrEffec=squeeze(Vr(j,:,:));
+    
+    Kr=VrEffec'*K*VrEffec;
+    Br=VrEffec'*B;
+    Dr=VrEffec'*D*VrEffec;
+    
+    Ar=[zeros(rEffec) eye(rEffec);
+       -Kr -Dr];
 
-    Ar=[zeros(r) eye(r);
-       -Kr zeros(r)];
-
-    xr0=zeros(1,2*r);
-    xr0(1:r)=Br;
+    xr0=zeros(1,2*rEffec);
+    xr0(1:rEffec)=Br;
 
     [t, xr] = ode45(@(t,pr) myfun(t,pr,Ar), tspan, xr0);
 
     % Project back to full space
-    reducedP=(squeeze(Vr(j,:,:))*xr(:,1:r)')';
+    reducedP=(VrEffec*xr(:,1:rEffec)')';
 
     errorP(j,:,:)=fullP-reducedP;
     plot(errorP(j,:,625))
@@ -167,6 +175,8 @@ end
 %
 plot(reducedP(:,625))
 plot(fullP(:,625))
+legend('E','R','F');
+
 %% Plot the animations
 %
 
